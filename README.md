@@ -81,3 +81,19 @@ Sonuçlar `reports/generated/initial_binary_subset/` altında oluşturulur. Bu
 adımda `Likely pathogenic`, `Likely benign`, birleşik, belirsiz ve çelişkili
 etiketler bilinçli olarak ikili hedefe katılmaz.
 
+### İlk türetilmiş veri setini oluşturma
+
+Filtre profilindeki katı politikayla her `VariationID` için tek satır üretmek
+için:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\build_initial_binary_dataset.py
+```
+
+Çıktı `data/processed/clinvar_grch38_germline_exact_binary.tsv.gz` konumuna
+yazılır. `Pathogenic=1`, `Benign=0` eşlemesi kullanılır. Birden fazla farklı
+kromozom/koordinat temsili bulunan `VariationID` değerleri ilk sade veri
+setinden dışlanır. Kaynak ve çıktı SHA-256 değerleri, filtre politikası ve sütun
+kullanım uyarıları `reports/generated/initial_binary_dataset/manifest.json`
+içinde kaydedilir.
+
