@@ -97,3 +97,31 @@ setinden dışlanır. Kaynak ve çıktı SHA-256 değerleri, filtre politikası 
 kullanım uyarıları `reports/generated/initial_binary_dataset/manifest.json`
 içinde kaydedilir.
 
+### Temel özellik tablosunu oluşturma
+
+Kimlik, gen ve genom konumu gibi ezberleme riski yüksek alanları dışarıda
+tutarak ilk yapısal özellik tablosunu üretmek için:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\build_baseline_features.py
+```
+
+Çıktı `data/processed/clinvar_baseline_features.tsv.gz` konumuna yazılır. Bu
+dosyada varyant türü, kromozom, allel uzunlukları, uzunluk farkı, kanonik SNV
+durumu, baz değişimi ve mutasyon sınıfı bulunur. `VariationID` yalnızca satır
+izlenebilirliği içindir; model girdisi değildir.
+
+### Sabit train/validation/test ayrımı
+
+Sınıf oranlarını koruyan deterministik `%70 / %15 / %15` ayrımı oluşturmak
+için:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\build_stratified_split.py
+```
+
+Ayrım `seed=2027` ve SHA-256 sıralamasıyla üretilir. Atamalar
+`data/processed/baseline_stratified_split.tsv`, yöntem ve sayımlar ise
+`reports/generated/baseline_split/manifest.json` altında tutulur. Bu ilk ayrım
+varyant düzeyindedir; görülmemiş genlere genelleme deneyi değildir.
+
