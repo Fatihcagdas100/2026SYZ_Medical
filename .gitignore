@@ -1,0 +1,16 @@
+# Project-specific Python environment
+.venv/
+
+# Python cache and build artifacts
+__pycache__/
+*.py[cod]
+
+# Raw and derived datasets must not be committed
+data/raw/*
+!data/raw/.gitkeep
+data/processed/
+
+# Local experiment outputs
+artifacts/
+reports/generated/
+
