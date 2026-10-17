@@ -361,3 +361,36 @@ bir train/validation ayrımına güçlü biçimde bağlı olmadığına dair olu
 kararlılık kontrolüdür. Bu analiz dış veri doğrulamasının yerine geçmez ve
 kilitli test bölümü hâlâ açılmamıştır.
 
+### OOF olasılık kalibrasyonu
+
+Gene-disjoint çapraz doğrulamadaki olasılıkların güvenilirliğini incelemek için:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\analyze_oof_calibration.py
+```
+
+Betik yalnızca train out-of-fold tahminlerini kabul eder. Eşit-frekans ve sabit
+genişlikli olasılık dilimlerini, fold bazında kalibrasyon ölçülerini ve
+güvenilirlik grafiğini
+`reports/generated/hgvs_gene_disjoint_cv/calibration/` altında üretir. Bu aşama
+bir tanısal analizdir; modele yeniden kalibrasyon uygulamaz ve sabit validation
+veya test verisini kullanmaz.
+
+257.035 OOF tahmini üzerindeki sonuçlar:
+
+| Kalibrasyon ölçüsü | Değer |
+| --- | ---: |
+| Brier skoru | 0.0466 |
+| Log loss | 0.1525 |
+| ECE (10 eşit-frekans dilimi) | 0.0050 |
+| MCE (10 eşit-frekans dilimi) | 0.0220 |
+| Kalibrasyon intercept'i (ideal 0) | 0.0213 |
+| Kalibrasyon slope'u (ideal 1) | 0.9662 |
+
+Genel güvenilirlik eğrisi ideale yakındır. Bununla birlikte sabit genişlikli
+orta olasılık dilimlerinde yerel sapmalar vardır: `0.50–0.60` bandında tahmin
+gözlenenden yaklaşık 5,4 yüzde puanı yüksek, `0.70–0.80` bandında yaklaşık 6,0
+yüzde puanı düşüktür. Bu nedenle genel bir yeniden kalibrasyon şimdilik
+uygulanmamış; model olasılıklarının bireysel klinik risk olarak değil, öncelikle
+sıralama ve araştırma amaçlı skor olarak ele alınması korunmuştur.
+
