@@ -325,3 +325,39 @@ birlikte sonuç hâlâ ClinVar validation verisine aittir. ClinVar'ın anotasyon
 seçim yanlılıkları dış veri performansını yükseltebilir veya düşürebilir; bu
 model klinik kullanıma hazır değildir ve kilitli test henüz açılmamıştır.
 
+### Train-only gene-disjoint çapraz doğrulama
+
+HGVS modelinin tek bir gen ayrımına özgü olup olmadığını, sabit validation ve
+test bölümlerine dokunmadan ölçmek için:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\cross_validate_gene_disjoint.py
+```
+
+Betik yalnızca gene-disjoint `train` bölümünde 5 katlı
+`StratifiedGroupKFold` uygular. Her gen bileşeni tek bir holdout fold'unda kalır
+ve her train varyantı tam bir out-of-fold tahmin alır. Fold metrikleri, birleşik
+out-of-fold tahminleri, katsayı kararlılığı ve görsel özet
+`reports/generated/hgvs_gene_disjoint_cv/` altında üretilir. Sabit validation
+ve test bu analizde kullanılmaz.
+
+Gerçek train koşusunda 257.035 varyant ve 8.132 gen bileşeni kullanılmıştır.
+Beş fold için ROC-AUC ortalaması `0.9828 ± 0.0041` (örneklem standart sapması),
+aralığı `0.9781–0.9867` olmuştur. Birleştirilmiş out-of-fold sonuçları:
+
+| Metrik (sabit eşik = 0.5) | OOF değer |
+| --- | ---: |
+| ROC-AUC | 0.9828 |
+| Average precision | 0.9822 |
+| F1 | 0.9216 |
+| Dengeli doğruluk | 0.9253 |
+| Duyarlılık | 0.8978 |
+| Özgüllük | 0.9529 |
+
+Her train varyantı tam bir OOF tahmin almış, hiçbir gen bileşeni birden fazla
+holdout fold'una dağılmamıştır. Bu sonuçların sabit gene-disjoint validation
+ROC-AUC değeri olan `0.9824` ile yakın olması, model performansının seçilmiş tek
+bir train/validation ayrımına güçlü biçimde bağlı olmadığına dair olumlu bir
+kararlılık kontrolüdür. Bu analiz dış veri doğrulamasının yerine geçmez ve
+kilitli test bölümü hâlâ açılmamıştır.
+
