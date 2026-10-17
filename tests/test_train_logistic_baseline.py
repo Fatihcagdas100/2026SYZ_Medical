@@ -30,6 +30,12 @@ class TrainLogisticBaselineTest(unittest.TestCase):
                 "is_canonical_snv",
                 "substitution",
                 "mutation_class",
+                "hgvs_sequence_type",
+                "dna_change_type",
+                "coding_region",
+                "splice_offset_category",
+                "protein_effect",
+                "has_protein_annotation",
                 "target",
             ]
             rows = []
@@ -64,6 +70,16 @@ class TrainLogisticBaselineTest(unittest.TestCase):
                                 "mutation_class": (
                                     "not_canonical_snv" if is_pathogenic else "transition"
                                 ),
+                                "hgvs_sequence_type": "coding_transcript",
+                                "dna_change_type": "substitution",
+                                "coding_region": "coding_exonic",
+                                "splice_offset_category": "not_intronic",
+                                "protein_effect": (
+                                    "stop_gained_or_changed"
+                                    if is_pathogenic
+                                    else "synonymous"
+                                ),
+                                "has_protein_annotation": 1,
                                 "target": target,
                             }
                         )
@@ -131,6 +147,21 @@ class TrainLogisticBaselineTest(unittest.TestCase):
             self.assertFalse(set(predictions["VariationID"]) & test_ids)
             self.assertEqual(len(predictions), 8)
             self.assertEqual(len(list(artifact_dir.glob("*.joblib"))), 2)
+
+            hgvs_manifest = train_baselines(
+                features_path,
+                split_path,
+                report_dir / "hgvs",
+                artifact_dir / "hgvs",
+                seed=2027,
+                chunk_size=5,
+                feature_profile="hgvs",
+            )
+            self.assertEqual(hgvs_manifest["data_policy"]["feature_profile"], "hgvs")
+            self.assertIn(
+                "protein_effect",
+                hgvs_manifest["models"]["without_missingness_flag"]["feature_columns"],
+            )
 
 
 if __name__ == "__main__":

@@ -274,3 +274,54 @@ genelleme performansını iyimser gösterebildiğini belirtir. Bundan sonraki mo
 karşılaştırmalarında gene-disjoint validation daha katı ana geliştirme ölçütü
 olarak kullanılmalıdır; test bölümü model seçimi için açılmaz.
 
+### HGVS sonuç özellikleri
+
+ClinVar `Name` alanındaki ham gen ve transkript metnini modele vermeden yalnızca
+HGVS sonuç türlerini çıkarmak için:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\build_hgvs_features.py
+```
+
+Çıktı `data/processed/clinvar_hgvs_features.tsv.gz` konumuna yazılır. Eklenen
+özellikler HGVS dizi türü, DNA değişim türü, kodlayan bölge sınıfı, intronik
+splice uzaklığı sınıfı, protein etkisi ve protein açıklaması varlığıdır. Ham
+`Name`, gen sembolü ve transkript kimliği çıktıya alınmaz. Özellik dağılımları
+`reports/generated/hgvs_features/` altında yalnızca gene-disjoint `train` ve
+`validation` hedeflerine göre raporlanır; kilitli test hedef dağılımı rapora
+alınmaz.
+
+HGVS özellikli lojistik modeli gene-disjoint ayrım üzerinde eğitmek için:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\train_logistic_baseline.py `
+  --features data\processed\clinvar_hgvs_features.tsv.gz `
+  --split data\processed\baseline_gene_disjoint_split.tsv `
+  --feature-profile hgvs `
+  --report-dir reports\generated\logistic_hgvs_gene_disjoint `
+  --artifact-dir artifacts\logistic_hgvs_gene_disjoint
+```
+
+Eğitim kodunun varsayılan `baseline` profili korunur. `hgvs` profili seçilmeden
+HGVS sütunları okunmaz; böylece iki özellik seti aynı model ve veri ayrımıyla
+adil biçimde karşılaştırılabilir.
+
+Gene-disjoint validation üzerindeki ana model karşılaştırması:
+
+| Özellik seti | ROC-AUC | Average precision | F1 | Dengeli doğruluk |
+| --- | ---: | ---: | ---: | ---: |
+| Yapısal baseline | 0.7630 | 0.7516 | 0.6678 | 0.7018 |
+| Yapısal + HGVS sonuçları | 0.9824 | 0.9810 | 0.9195 | 0.9236 |
+
+Sabit `0.5` eşiğinde genel yanlış negatif sayısı 10.238'den 2.902'ye, yanlış
+pozitif sayısı 6.015'ten 1.241'e düşmüştür. SNV alt grubunda ROC-AUC
+`0.6423 → 0.9714`, duyarlılık `%18,23 → %79,71` olmuş; yanlış negatif sayısı
+10.077'den 2.500'e gerilemiştir.
+
+Bu güçlü artış biyolojik olarak beklenen sonuç sınıflarından gelir: örneğin
+stop-gained, frameshift ve splice çekirdeği etkileri patojeniklik yönünde;
+synonymous ve deep-intronic sınıfları benign yönünde ağırlık almıştır. Bununla
+birlikte sonuç hâlâ ClinVar validation verisine aittir. ClinVar'ın anotasyon ve
+seçim yanlılıkları dış veri performansını yükseltebilir veya düşürebilir; bu
+model klinik kullanıma hazır değildir ve kilitli test henüz açılmamıştır.
+

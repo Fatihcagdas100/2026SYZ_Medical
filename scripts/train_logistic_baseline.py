@@ -48,6 +48,13 @@ CATEGORICAL_FEATURES = (
     "substitution",
     "mutation_class",
 )
+HGVS_CATEGORICAL_FEATURES = (
+    "hgvs_sequence_type",
+    "dna_change_type",
+    "coding_region",
+    "splice_offset_category",
+    "protein_effect",
+)
 NUMERIC_FEATURES = (
     "reference_length",
     "alternate_length",
@@ -55,12 +62,18 @@ NUMERIC_FEATURES = (
     "absolute_length_delta",
     "is_canonical_snv",
 )
+HGVS_NUMERIC_FEATURES = ("has_protein_annotation",)
 MISSINGNESS_FEATURE = "vcf_alleles_missing"
 FEATURE_COLUMNS = (*CATEGORICAL_FEATURES, *NUMERIC_FEATURES, MISSINGNESS_FEATURE)
-REQUIRED_FEATURE_COLUMNS = ("VariationID", *FEATURE_COLUMNS, "target")
-MODEL_FEATURE_SETS = {
-    "without_missingness_flag": (*CATEGORICAL_FEATURES, *NUMERIC_FEATURES),
-    "with_missingness_flag": (*CATEGORICAL_FEATURES, *NUMERIC_FEATURES, MISSINGNESS_FEATURE),
+FEATURE_PROFILES = {
+    "baseline": {
+        "categorical": CATEGORICAL_FEATURES,
+        "numeric": NUMERIC_FEATURES,
+    },
+    "hgvs": {
+        "categorical": (*CATEGORICAL_FEATURES, *HGVS_CATEGORICAL_FEATURES),
+        "numeric": (*NUMERIC_FEATURES, *HGVS_NUMERIC_FEATURES),
+    },
 }
 EXPECTED_SPLITS = {"train", "validation", "test"}
 
@@ -104,6 +117,8 @@ def load_development_data(
     features_path: Path,
     split_path: Path,
     *,
+    feature_columns: Sequence[str] = FEATURE_COLUMNS,
+    categorical_features: Sequence[str] = CATEGORICAL_FEATURES,
     chunk_size: int = DEFAULT_CHUNK_SIZE,
 ) -> tuple[pd.DataFrame, dict[str, int]]:
     """Yalnızca train/validation satırlarını döndür; test satırlarını kilitli tut."""
@@ -119,20 +134,23 @@ def load_development_data(
     partition_counts: Counter[str] = Counter()
     dtypes = {
         "VariationID": "string",
-        "variant_type": "string",
-        "chromosome": "string",
-        "substitution": "string",
-        "mutation_class": "string",
         "vcf_alleles_missing": "Int8",
         "is_canonical_snv": "Int8",
+        "has_protein_annotation": "Int8",
         "target": "Int8",
+    }
+    dtypes.update({feature: "string" for feature in categorical_features})
+    selected_dtypes = {
+        column: dtype
+        for column, dtype in dtypes.items()
+        if column in {"VariationID", *feature_columns, "target"}
     }
 
     for chunk in pd.read_csv(
         features_path,
         sep="\t",
-        usecols=list(REQUIRED_FEATURE_COLUMNS),
-        dtype=dtypes,
+        usecols=["VariationID", *feature_columns, "target"],
+        dtype=selected_dtypes,
         chunksize=chunk_size,
     ):
         if chunk["VariationID"].isna().any():
@@ -186,8 +204,13 @@ def load_development_data(
     }
 
 
-def build_pipeline(feature_names: Sequence[str], *, seed: int) -> Pipeline:
-    categorical = [name for name in CATEGORICAL_FEATURES if name in feature_names]
+def build_pipeline(
+    feature_names: Sequence[str],
+    *,
+    seed: int,
+    categorical_features: Sequence[str] = CATEGORICAL_FEATURES,
+) -> Pipeline:
+    categorical = [name for name in categorical_features if name in feature_names]
     numeric = [name for name in feature_names if name not in categorical]
     preprocessing = ColumnTransformer(
         transformers=[
@@ -269,13 +292,33 @@ def train_baselines(
     seed: int = DEFAULT_SEED,
     threshold: float = 0.5,
     chunk_size: int = DEFAULT_CHUNK_SIZE,
+    feature_profile: str = "baseline",
 ) -> dict[str, object]:
     if not 0 < threshold < 1:
         raise ValueError("Eşik 0 ile 1 arasında olmalıdır.")
 
+    if feature_profile not in FEATURE_PROFILES:
+        raise ValueError(
+            f"Bilinmeyen özellik profili: {feature_profile}. "
+            f"Seçenekler: {', '.join(FEATURE_PROFILES)}"
+        )
+    profile = FEATURE_PROFILES[feature_profile]
+    categorical_features = profile["categorical"]
+    numeric_features = profile["numeric"]
+    base_feature_names = (*categorical_features, *numeric_features)
+    model_feature_sets = {
+        "without_missingness_flag": base_feature_names,
+        "with_missingness_flag": (*base_feature_names, MISSINGNESS_FEATURE),
+    }
+    required_feature_columns = tuple(
+        dict.fromkeys(feature for names in model_feature_sets.values() for feature in names)
+    )
+
     development, partition_counts = load_development_data(
         features_path,
         split_path,
+        feature_columns=required_feature_columns,
+        categorical_features=categorical_features,
         chunk_size=chunk_size,
     )
     train = development.loc[development["split"] == "train"].copy()
@@ -290,8 +333,12 @@ def train_baselines(
     coefficient_tables: list[pd.DataFrame] = []
     model_details: dict[str, object] = {}
 
-    for model_name, feature_names in MODEL_FEATURE_SETS.items():
-        pipeline = build_pipeline(feature_names, seed=seed)
+    for model_name, feature_names in model_feature_sets.items():
+        pipeline = build_pipeline(
+            feature_names,
+            seed=seed,
+            categorical_features=categorical_features,
+        )
         pipeline.fit(train.loc[:, feature_names], y_train)
         probabilities = pd.Series(
             pipeline.predict_proba(validation.loc[:, feature_names])[:, 1],
@@ -373,6 +420,7 @@ def train_baselines(
             },
         },
         "data_policy": {
+            "feature_profile": feature_profile,
             "training_partition": "train",
             "evaluation_partition": "validation",
             "test_partition": "locked_not_loaded_into_development_dataframe",
@@ -432,6 +480,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--seed", type=int, default=DEFAULT_SEED)
     parser.add_argument("--threshold", type=float, default=0.5)
     parser.add_argument("--chunk-size", type=int, default=DEFAULT_CHUNK_SIZE)
+    parser.add_argument(
+        "--feature-profile",
+        choices=tuple(FEATURE_PROFILES),
+        default="baseline",
+    )
     return parser.parse_args()
 
 
@@ -447,6 +500,7 @@ def main() -> None:
         seed=args.seed,
         threshold=args.threshold,
         chunk_size=args.chunk_size,
+        feature_profile=args.feature_profile,
     )
 
 
