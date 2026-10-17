@@ -12,7 +12,12 @@ patojenik/benign sınıflandırılması üzerine yürütülen çalışma.
 - Aynı varyantın GRCh37 ve GRCh38 için ayrı satırlarda bulunabildiği görüldü.
 - Birleşik klinik etiketlerin (ör. `Pathogenic/Likely pathogenic`) ayrıca ele
   alınması gerektiği belirlendi.
-- Henüz veri temizleme veya model eğitimi yapılmadı.
+- Katı `GRCh38 + germline + tam Pathogenic/Benign` politikasıyla 367.196
+  benzersiz varyanttan oluşan ilk veri seti hazırlandı.
+- Sızıntı riski yüksek kimlik, gen ve konum alanlarını kullanmayan yapısal
+  özellikler üretildi ve sabit `%70 / %15 / %15` veri ayrımı oluşturuldu.
+- İlk lojistik regresyon baseline'ı yalnızca `train` üzerinde eğitildi ve
+  `validation` üzerinde değerlendirildi; `test` bölümü kilitli tutuluyor.
 
 ## Python ortamı
 
@@ -140,4 +145,31 @@ Ayrım `seed=2027` ve SHA-256 sıralamasıyla üretilir. Atamalar
 `data/processed/baseline_stratified_split.tsv`, yöntem ve sayımlar ise
 `reports/generated/baseline_split/manifest.json` altında tutulur. Bu ilk ayrım
 varyant düzeyindedir; görülmemiş genlere genelleme deneyi değildir.
+
+### İlk lojistik regresyon baseline'ı
+
+Modeli yalnızca `train` bölümünde eğitip sadece `validation` bölümünde
+değerlendirmek için:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\train_logistic_baseline.py
+```
+
+Betik sabit `0.5` karar eşiğiyle iki kontrollü model kurar: ana model açık VCF
+eksiklik göstergesini kullanmaz; karşılaştırma modeli bu göstergeyi ekler.
+`VariationID` model girdisi değildir. `test` satırları geliştirme tablosuna
+alınmaz ve test metriği üretilmez. Doğrulama metrikleri ile katsayılar
+`reports/generated/logistic_baseline/`, eğitilmiş yerel modeller ise
+`artifacts/logistic_baseline/` altında tutulur; bu iki klasör Git'e eklenmez.
+
+Mevcut yerel veri anlık görüntüsündeki doğrulama sonuçları:
+
+| Model | ROC-AUC | F1 | Dengeli doğruluk |
+| --- | ---: | ---: | ---: |
+| Eksiklik bayrağı olmadan | 0.7845 | 0.6945 | 0.7211 |
+| Eksiklik bayrağıyla | 0.7850 | 0.6945 | 0.7211 |
+
+Eksiklik bayrağının katkısı çok küçük olduğundan daha temkinli ana baseline,
+bu bayrağı kullanmayan modeldir. Bu değerler doğrulama sonucudur; nihai test
+performansı değildir.
 
