@@ -28,6 +28,22 @@ Terminalden doğrulama:
 .\.venv\Scripts\python.exe --version
 ```
 
+Modelleme bağımlılıklarını proje ortamına kurmak için:
+
+```powershell
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+```
+
+Ortamı doğrulanan sürümlerle birebir yeniden kurmak için:
+
+```powershell
+.\.venv\Scripts\python.exe -m pip install -r requirements-lock.txt
+```
+
+`requirements.txt` doğrudan kullandığımız paketleri, `requirements-lock.txt`
+ise yeniden üretim için kurulan bütün doğrudan ve dolaylı paket sürümlerini
+sabitler.
+
 ## Veri
 
 Ham veri büyük olduğu ve harici bir kaynaktan yeniden indirilebildiği için Git
