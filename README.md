@@ -202,3 +202,33 @@ Bu tablo bir eşik önerisi değil, yanlış negatiflerle yanlış pozitifler ar
 ödünleşmenin validation verisindeki ölçümüdür. Kullanım senaryosunun hata
 maliyetleri tanımlanmadan operasyonel eşik sabitlenmez.
 
+### Validation alt grup hata analizi
+
+Ana modelin sabit `0.5` eşiğindeki hatalarını varyant türü, kromozom, mutasyon
+sınıfı, baz değişimi, SNV durumu ve uzunluk farkına göre incelemek için:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\analyze_validation_errors.py
+```
+
+Alt grup metrikleri, en güvenli görünüp yanlış çıkan örnekler ve hata oranı
+grafikleri `reports/generated/logistic_baseline/error_analysis/` altında
+üretilir. Tabloda tüm gruplar korunur; 100'den az validation kaydı olan gruplar
+kararsız oran uyarısıyla işaretlenir ve varsayılan grafiklere alınmaz. Betik
+yalnızca validation tahmin kimliklerinin özelliklerini belleğe alır.
+
+Mevcut validation analizindeki başlıca bulgular:
+
+- Tek nükleotid varyantları 36.224 kayıtla en büyük gruptur; bu gruptaki
+  patojenik kayıtların `%77,49`u `0.5` eşiğinde yanlış negatif olmuştur.
+- Toplam 9.272 yanlış negatifin 9.152'si tek nükleotid varyantıdır.
+- Transition grubundaki 6.351 patojenik kaydın tamamı yanlış negatif olmuştur.
+- Deletion ve duplication gruplarında duyarlılık `%100` iken özgüllük `%0`dır;
+  model bu gruplardaki bütün kayıtları patojenik sınıfa atamaktadır.
+- Bu davranış, ilk baseline'ın kaba varyant kategorilerine fazla yaslandığını ve
+  aynı varyant türü içindeki biyolojik ayrımı yeterince öğrenemediğini gösterir.
+
+Bu nedenle sonraki model geliştirme adımı yalnızca genel skoru yükseltmeye
+değil, özellikle SNV'lerde sınıf ayrımını güçlendirecek biyolojik özelliklere ve
+özellik etkileşimlerine odaklanmalıdır.
+
