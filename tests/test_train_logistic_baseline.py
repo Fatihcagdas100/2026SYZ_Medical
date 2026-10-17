@@ -36,6 +36,16 @@ class TrainLogisticBaselineTest(unittest.TestCase):
                 "splice_offset_category",
                 "protein_effect",
                 "has_protein_annotation",
+                "missense_reference_residue",
+                "missense_alternate_residue",
+                "missense_substitution",
+                "missense_residue_class_transition",
+                "missense_charge_transition",
+                "missense_features_available",
+                "missense_grantham_distance",
+                "missense_blosum62_score",
+                "missense_hydropathy_delta",
+                "missense_absolute_hydropathy_delta",
                 "target",
             ]
             rows = []
@@ -80,6 +90,16 @@ class TrainLogisticBaselineTest(unittest.TestCase):
                                     else "synonymous"
                                 ),
                                 "has_protein_annotation": 1,
+                                "missense_reference_residue": "R",
+                                "missense_alternate_residue": "G",
+                                "missense_substitution": "R>G",
+                                "missense_residue_class_transition": "positive>special",
+                                "missense_charge_transition": "positive>neutral",
+                                "missense_features_available": 1,
+                                "missense_grantham_distance": 125,
+                                "missense_blosum62_score": -2,
+                                "missense_hydropathy_delta": 4.1,
+                                "missense_absolute_hydropathy_delta": 4.1,
                                 "target": target,
                             }
                         )
@@ -178,6 +198,21 @@ class TrainLogisticBaselineTest(unittest.TestCase):
             self.assertIn("protein_effect", biological_columns)
             self.assertNotIn("hgvs_sequence_type", biological_columns)
             self.assertNotIn("has_protein_annotation", biological_columns)
+
+            missense_manifest = train_baselines(
+                features_path,
+                split_path,
+                report_dir / "hgvs_missense",
+                artifact_dir / "hgvs_missense",
+                seed=2027,
+                chunk_size=5,
+                feature_profile="hgvs_missense",
+            )
+            missense_columns = missense_manifest["models"][
+                "without_missingness_flag"
+            ]["feature_columns"]
+            self.assertIn("missense_grantham_distance", missense_columns)
+            self.assertIn("missense_substitution", missense_columns)
 
 
 if __name__ == "__main__":

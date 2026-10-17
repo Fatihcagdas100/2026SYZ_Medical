@@ -32,39 +32,39 @@ baseline karşılaştırmasıdır.
 
 | Model | ROC-AUC | AP | Precision | Recall | Özgüllük | F1 |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| Lojistik regresyon | 0.9824 | 0.9810 | 0.9502 | 0.8908 | 0.9564 | 0.9195 |
-| HistGradientBoosting | 0.9839 | 0.9821 | 0.9506 | 0.8984 | 0.9564 | 0.9238 |
+| Lojistik regresyon | 0.9824 | 0.9810 | 0.9505 | 0.8902 | 0.9568 | 0.9194 |
+| HistGradientBoosting | 0.9839 | 0.9821 | 0.9497 | 0.8954 | 0.9558 | 0.9218 |
 
 Ağaç eksi lojistik farkları:
 
-- ROC-AUC: `+0.001519`
-- AP: `+0.001124`
-- recall: `+0.007602`
-- F1: `+0.004223`
-- özgüllük: `0.000000`
+- ROC-AUC: `+0.001552`
+- AP: `+0.001143`
+- recall: `+0.005231`
+- F1: `+0.002411`
+- özgüllük: `-0.000983`
 
-Yanlış negatif sayısı 2.902'den 2.700'e düşmüştür. Yanlış pozitif sayısı iki
-modelde de 1.241'dir.
+Yanlış negatif sayısı 2.919'dan 2.780'e düşmüştür. Yanlış pozitif sayısı
+1.231'den 1.259'a çıkmıştır.
 
 ## Kritik alt gruplar
 
 | Grup | Model | ROC-AUC | AP | Precision | Recall | Özgüllük |
 | --- | --- | ---: | ---: | ---: | ---: | ---: |
-| Missense | Lojistik | 0.5703 | 0.5089 | 0.5263 | 0.3196 | 0.7636 |
-| Missense | Ağaç | 0.5574 | 0.4998 | 0.5159 | 0.3149 | 0.7572 |
-| Synonymous | Lojistik | 0.5422 | 0.0118 | 0.0000 | 0.0000 | 1.0000 |
-| Synonymous | Ağaç | 0.5775 | 0.0115 | 0.0000 | 0.0000 | 1.0000 |
-| Frameshift | Lojistik | 0.5615 | 0.9949 | 0.9940 | 0.9997 | 0.0000 |
-| Frameshift | Ağaç | 0.5137 | 0.9945 | 0.9940 | 1.0000 | 0.0000 |
+| Missense | Lojistik | 0.5696 | 0.5078 | 0.5262 | 0.3149 | 0.7670 |
+| Missense | Ağaç | 0.5555 | 0.4984 | 0.4894 | 0.2893 | 0.7521 |
+| Synonymous | Lojistik | 0.5311 | 0.0114 | 0.0000 | 0.0000 | 1.0000 |
+| Synonymous | Ağaç | 0.5635 | 0.0112 | 0.0000 | 0.0000 | 1.0000 |
+| Frameshift | Lojistik | 0.5582 | 0.9949 | 0.9940 | 1.0000 | 0.0000 |
+| Frameshift | Ağaç | 0.5050 | 0.9943 | 0.9940 | 1.0000 | 0.0000 |
 | Stop-gained/changed | Lojistik | 0.4667 | 0.9967 | 0.9969 | 1.0000 | 0.0000 |
 | Stop-gained/changed | Ağaç | 0.3782 | 0.9959 | 0.9969 | 1.0000 | 0.0000 |
 
 Missense grubunda ağaç modeli lojistiğe göre daha kötüdür:
 
-- ROC-AUC farkı: `-0.012884`
-- AP farkı: `-0.009084`
-- recall farkı: `-0.004701`
-- F1 farkı: `-0.006612`
+- ROC-AUC farkı: `-0.014081`
+- AP farkı: `-0.009368`
+- recall farkı: `-0.025697`
+- F1 farkı: `-0.030440`
 
 Synonymous gruptaki 46 patojenik kaydın hiçbirini iki model de `0.5` eşiğinde
 yakalamamıştır. Frameshift ve stop-gained/changed gruplarında iki model de bütün
@@ -74,14 +74,14 @@ benign kayıtları patojenik tahmin ettiği için özgüllük sıfırdır.
 
 | Grup | Model | ROC-AUC | AP | Recall | Özgüllük |
 | --- | --- | ---: | ---: | ---: | ---: |
-| Protein anotasyonu var | Lojistik | 0.9659 | 0.9844 | 0.8999 | 0.8829 |
-| Protein anotasyonu var | Ağaç | 0.9653 | 0.9839 | 0.9014 | 0.8794 |
-| Protein anotasyonu yok | Lojistik | 0.9750 | 0.9405 | 0.8367 | 0.9929 |
-| Protein anotasyonu yok | Ağaç | 0.9804 | 0.9584 | 0.8807 | 0.9946 |
+| Protein anotasyonu var | Lojistik | 0.9658 | 0.9843 | 0.8994 | 0.8838 |
+| Protein anotasyonu var | Ağaç | 0.9651 | 0.9836 | 0.8978 | 0.8772 |
+| Protein anotasyonu yok | Lojistik | 0.9746 | 0.9411 | 0.8351 | 0.9930 |
+| Protein anotasyonu yok | Ağaç | 0.9804 | 0.9596 | 0.8812 | 0.9948 |
 
 Genel artışın önemli bölümü protein anotasyonu olmayan gruptan gelmektedir. Bu
-grupta ağaç modeli yanlış negatifleri 623'ten 455'e, yanlış pozitifleri 135'ten
-102'ye düşürmüştür. Protein anotasyonu bulunan grupta ROC-AUC ve AP küçük
+grupta ağaç modeli yanlış negatifleri 629'dan 453'e, yanlış pozitifleri 134'ten
+99'a düşürmüştür. Protein anotasyonu bulunan grupta ROC-AUC ve AP küçük
 ölçüde azalmıştır.
 
 ## Karar

@@ -68,6 +68,20 @@ NUMERIC_FEATURES = (
 )
 HGVS_REPRESENTATION_NUMERIC_FEATURES = ("has_protein_annotation",)
 HGVS_NUMERIC_FEATURES = HGVS_REPRESENTATION_NUMERIC_FEATURES
+MISSENSE_CATEGORICAL_FEATURES = (
+    "missense_reference_residue",
+    "missense_alternate_residue",
+    "missense_substitution",
+    "missense_residue_class_transition",
+    "missense_charge_transition",
+)
+MISSENSE_NUMERIC_FEATURES = (
+    "missense_features_available",
+    "missense_grantham_distance",
+    "missense_blosum62_score",
+    "missense_hydropathy_delta",
+    "missense_absolute_hydropathy_delta",
+)
 MISSINGNESS_FEATURE = "vcf_alleles_missing"
 FEATURE_COLUMNS = (*CATEGORICAL_FEATURES, *NUMERIC_FEATURES, MISSINGNESS_FEATURE)
 FEATURE_PROFILES = {
@@ -85,6 +99,18 @@ FEATURE_PROFILES = {
     "hgvs": {
         "categorical": (*CATEGORICAL_FEATURES, *HGVS_CATEGORICAL_FEATURES),
         "numeric": (*NUMERIC_FEATURES, *HGVS_NUMERIC_FEATURES),
+    },
+    "hgvs_missense": {
+        "categorical": (
+            *CATEGORICAL_FEATURES,
+            *HGVS_CATEGORICAL_FEATURES,
+            *MISSENSE_CATEGORICAL_FEATURES,
+        ),
+        "numeric": (
+            *NUMERIC_FEATURES,
+            *HGVS_NUMERIC_FEATURES,
+            *MISSENSE_NUMERIC_FEATURES,
+        ),
     },
 }
 EXPECTED_SPLITS = {"train", "validation", "test"}

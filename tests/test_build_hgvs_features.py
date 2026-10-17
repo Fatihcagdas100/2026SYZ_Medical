@@ -49,6 +49,10 @@ class BuildHgvsFeaturesTest(unittest.TestCase):
                 "protein_effect": "uncertain_or_absent",
                 "has_protein_annotation": "1",
             },
+            "NM_000010.1(GENE):c.301A>N (p.Lys101Xaa)": {
+                "protein_effect": "uncertain_or_absent",
+                "has_protein_annotation": "1",
+            },
             "GENE variant without HGVS notation": {
                 "hgvs_sequence_type": "unknown",
                 "dna_change_type": "no_hgvs_dna_notation",

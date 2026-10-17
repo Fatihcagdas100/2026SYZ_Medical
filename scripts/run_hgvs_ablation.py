@@ -58,6 +58,24 @@ def calculate_subgroup_metrics(
 ) -> dict[str, object]:
     targets = frame["target"].astype(int)
     probabilities = frame["probability_pathogenic"].astype(float)
+    if frame.empty:
+        return {
+            "group": group_name,
+            "row_count": 0,
+            "negative_count": 0,
+            "positive_count": 0,
+            "positive_prevalence": float("nan"),
+            "precision": float("nan"),
+            "recall_sensitivity": float("nan"),
+            "specificity": float("nan"),
+            "f1": float("nan"),
+            "roc_auc": float("nan"),
+            "average_precision": float("nan"),
+            "true_negatives": 0,
+            "false_positives": 0,
+            "false_negatives": 0,
+            "true_positives": 0,
+        }
     predictions = (probabilities >= threshold).astype(int)
     tn, fp, fn, tp = confusion_matrix(targets, predictions, labels=[0, 1]).ravel()
     both_classes = targets.nunique() == 2

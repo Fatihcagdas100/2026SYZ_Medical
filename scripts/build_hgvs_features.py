@@ -49,7 +49,13 @@ OUTPUT_COLUMNS = (*BASELINE_COLUMNS, *HGVS_FEATURE_COLUMNS, "target")
 DNA_NOTATION = re.compile(r":([cgnmr])\.([^\s]+)", re.IGNORECASE)
 PROTEIN_NOTATION = re.compile(r"\(p\.([^)]+)\)", re.IGNORECASE)
 INTRON_OFFSET = re.compile(r"(?<=\d)([+-])(\d+)")
-MISSENSE_PROTEIN = re.compile(r"^[A-Z][a-z]{2}\d+[A-Z][a-z]{2}$")
+STANDARD_AMINO_ACID = (
+    r"(?:Ala|Arg|Asn|Asp|Cys|Gln|Glu|Gly|His|Ile|Leu|Lys|Met|Phe|Pro|"
+    r"Ser|Thr|Trp|Tyr|Val)"
+)
+MISSENSE_PROTEIN = re.compile(
+    rf"^{STANDARD_AMINO_ACID}\d+{STANDARD_AMINO_ACID}$"
+)
 SEQUENCE_TYPE_NAMES = {
     "c": "coding_transcript",
     "g": "genomic",
@@ -138,7 +144,7 @@ def classify_protein_effect(protein_change: str | None) -> str:
         return "inframe_deletion"
     if "ins" in lowered:
         return "inframe_insertion"
-    if "?" in normalized or normalized == "0":
+    if "?" in normalized or normalized == "0" or "xaa" in lowered:
         return "uncertain_or_absent"
     if MISSENSE_PROTEIN.fullmatch(normalized):
         return "missense"

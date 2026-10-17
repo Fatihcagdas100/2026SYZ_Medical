@@ -23,6 +23,7 @@ class AuditHgvsParserTest(unittest.TestCase):
                 ("4", "NM_4.1(G):c.9C>T (p.Gln3Ter)", "1", "validation"),
                 ("5", "NM_5.1(G):c.10+1G>A", "0", "train"),
                 ("6", "NM_6.1(G):c.12A>G (p.?)", "0", "validation"),
+                ("8", "NM_8.1(G):c.12A>N (p.Lys4Xaa)", "0", "train"),
                 ("7", "NM_TEST.1(G):c.3A>T (p.Lys1Ter)", "1", "test"),
             ]
             with gzip.open(source_path, "wt", encoding="utf-8", newline="") as handle:

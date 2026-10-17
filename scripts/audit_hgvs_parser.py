@@ -91,7 +91,7 @@ def marker_consistent(expected_class: str, name: str) -> bool:
     if expected_class == "stop_gained_or_changed":
         return "ter" in token.casefold() or "*" in token
     if expected_class == "uncertain_or_absent":
-        return "?" in token or token == "0"
+        return "?" in token or token == "0" or "xaa" in token.casefold()
     raise ValueError(f"Denetlenmeyen protein sınıfı: {expected_class}")
 
 

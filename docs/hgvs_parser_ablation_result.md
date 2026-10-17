@@ -50,23 +50,23 @@ regresyondur.
 | Özellik profili | ROC-AUC | AP | Duyarlılık | Özgüllük | F1 |
 | --- | ---: | ---: | ---: | ---: | ---: |
 | Yalnız yapısal | 0.7630 | 0.7516 | 0.6147 | 0.7889 | 0.6678 |
-| Yapısal + HGVS biyolojik sonuç | 0.9824 | 0.9810 | 0.8909 | 0.9570 | 0.9198 |
-| Biyolojik sonuç + açık gösterim alanları | 0.9824 | 0.9810 | 0.8908 | 0.9564 | 0.9195 |
+| Yapısal + HGVS biyolojik sonuç | 0.9825 | 0.9810 | 0.8912 | 0.9561 | 0.9196 |
+| Biyolojik sonuç + açık gösterim alanları | 0.9824 | 0.9810 | 0.8902 | 0.9568 | 0.9194 |
 
 Yapısal profile HGVS biyolojik sonuçlarının eklenmesi:
 
-- ROC-AUC: `+0.219408`
-- AP: `+0.229368`
-- dengeli doğruluk: `+0.222105`
-- F1: `+0.252056`
+- ROC-AUC: `+0.219460`
+- AP: `+0.229418`
+- dengeli doğruluk: `+0.221834`
+- F1: `+0.251795`
 
 Açık `hgvs_sequence_type` ve `has_protein_annotation` alanlarının son basamakta
 eklenmesi:
 
-- ROC-AUC: `-0.000007`
-- AP: `+0.000018`
-- dengeli doğruluk: `-0.000301`
-- F1: `-0.000310`
+- ROC-AUC: `-0.000123`
+- AP: `-0.000063`
+- dengeli doğruluk: `-0.000175`
+- F1: `-0.000227`
 
 Son basamağın pratik katkısı gözlenmemiştir. Ancak orta profilde
 `protein_effect=no_protein_annotation` kategorisi bulunur; dolayısıyla anotasyon
@@ -77,19 +77,19 @@ anotasyon-varlığı sinyalini değil, açık gösterim alanlarının ek katkıs
 
 | Alt grup | n | Benign | Pathogenic | Precision | Recall | ROC-AUC | AP | Özgüllük |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| Tüm varyantlar | 55.068 | 28.495 | 26.573 | 0.9502 | 0.8908 | 0.9824 | 0.9810 | 0.9564 |
-| Missense | 7.075 | 3.884 | 3.191 | 0.5263 | 0.3196 | 0.5703 | 0.5089 | 0.7636 |
-| Synonymous | 5.338 | 5.292 | 46 | 0.0000 | 0.0000 | 0.5422 | 0.0118 | 1.0000 |
-| Frameshift | 11.430 | 69 | 11.361 | 0.9940 | 0.9997 | 0.5615 | 0.9949 | 0.0000 |
+| Tüm varyantlar | 55.068 | 28.495 | 26.573 | 0.9505 | 0.8902 | 0.9824 | 0.9810 | 0.9568 |
+| Missense | 7.075 | 3.884 | 3.191 | 0.5262 | 0.3149 | 0.5696 | 0.5078 | 0.7670 |
+| Synonymous | 5.338 | 5.292 | 46 | 0.0000 | 0.0000 | 0.5311 | 0.0114 | 1.0000 |
+| Frameshift | 11.430 | 69 | 11.361 | 0.9940 | 1.0000 | 0.5582 | 0.9949 | 0.0000 |
 | Stop-gained/changed | 7.773 | 24 | 7.749 | 0.9969 | 1.0000 | 0.4667 | 0.9967 | 0.0000 |
-| Protein anotasyonu var | 32.203 | 9.444 | 22.759 | 0.9488 | 0.8999 | 0.9659 | 0.9844 | 0.8829 |
-| Protein anotasyonu yok | 22.865 | 19.051 | 3.814 | 0.9594 | 0.8367 | 0.9750 | 0.9405 | 0.9929 |
+| Protein anotasyonu var | 32.203 | 9.444 | 22.759 | 0.9491 | 0.8994 | 0.9658 | 0.9843 | 0.8838 |
+| Protein anotasyonu yok | 22.865 | 19.051 | 3.814 | 0.9596 | 0.8351 | 0.9746 | 0.9411 | 0.9930 |
 
 ## Yorum
 
 Genel skor artışı bütün protein sonuç sınıflarında güçlü ayrım öğrenildiği
-anlamına gelmez. Missense grubunda ROC-AUC yalnızca `0.5703` ve duyarlılık
-`%31,96`dır; sıradaki modelleme adımının ana hedefi budur.
+anlamına gelmez. Missense grubunda ROC-AUC yalnızca `0.5696` ve duyarlılık
+`%31,49`dur; sıradaki modelleme adımının ana hedefi budur.
 
 Synonymous grubunda yalnızca 46 pozitif, frameshift grubunda yalnızca 69 negatif,
 stop grubunda yalnızca 24 negatif vardır. Bu aşırı sınıf dengesizliği nedeniyle

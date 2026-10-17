@@ -314,11 +314,11 @@ Gene-disjoint validation üzerindeki ana model karşılaştırması:
 | Özellik seti | ROC-AUC | Average precision | F1 | Dengeli doğruluk |
 | --- | ---: | ---: | ---: | ---: |
 | Yapısal baseline | 0.7630 | 0.7516 | 0.6678 | 0.7018 |
-| Yapısal + HGVS biyolojik sonuçları | 0.9824 | 0.9810 | 0.9198 | 0.9239 |
-| Biyolojik sonuçlar + açık gösterim alanları | 0.9824 | 0.9810 | 0.9195 | 0.9236 |
+| Yapısal + HGVS biyolojik sonuçları | 0.9825 | 0.9810 | 0.9196 | 0.9237 |
+| Biyolojik sonuçlar + açık gösterim alanları | 0.9824 | 0.9810 | 0.9194 | 0.9235 |
 
-Sabit `0.5` eşiğinde genel yanlış negatif sayısı 10.238'den 2.902'ye, yanlış
-pozitif sayısı 6.015'ten 1.241'e düşmüştür. SNV alt grubunda ROC-AUC
+Sabit `0.5` eşiğinde genel yanlış negatif sayısı 10.238'den 2.919'a, yanlış
+pozitif sayısı 6.015'ten 1.231'e düşmüştür. SNV alt grubunda ROC-AUC
 `0.6423 → 0.9714`, duyarlılık `%18,23 → %79,71` olmuş; yanlış negatif sayısı
 10.077'den 2.500'e gerilemiştir.
 
@@ -348,6 +348,12 @@ sınıflardan deterministik seçilen 60 ham örneğin basit bağımsız sözdizi
 kontrolü de 60/60 tutarlıdır. Bu kontrol klinik veya transkript-duyarlı uzman
 doğrulamasının yerine geçmez.
 
+Bu denetim sırasında `Xaa` ile bilinmeyen alternatif aminoasit belirten üç
+train kaydının genel üç-harfli kalıp tarafından missense sayıldığı görüldü.
+Ayrıştırıcı düzeltildi ve bu kayıtlar `uncertain_or_absent` sınıfına taşındı;
+özellik tabloları ve geliştirme karşılaştırmaları yeni veri hash'iyle yeniden
+üretildi.
+
 Üç özellik profilini aynı lojistik model ve aynı gene-disjoint ayrım üzerinde
 karşılaştırmak için:
 
@@ -358,15 +364,15 @@ karşılaştırmak için:
 Ablasyon, performans artışının HGVS biyolojik sonuç sınıfları eklendiğinde
 oluştuğunu gösterir: yapısal profile göre ROC-AUC farkı `+0.2194`, AP farkı
 `+0.2294` olmuştur. `hgvs_sequence_type` ve `has_protein_annotation` açık
-gösterim alanlarının ayrıca eklenmesi ROC-AUC'yi `-0.000007`, AP'yi `+0.000018`
+gösterim alanlarının ayrıca eklenmesi ROC-AUC'yi `-0.000123`, AP'yi `-0.000063`
 değiştirmiştir; pratik ek katkı görülmemiştir. Bununla birlikte biyolojik
 profildeki `protein_effect=no_protein_annotation` kategorisi anotasyon yokluğunu
 dolaylı taşıyabildiği için bu karşılaştırma bütün anotasyon-varlığı sinyalini
 tamamen ortadan kaldıran bir deney değildir.
 
 Tam modelin validation alt grup analizi genel skorun önemli bir zayıflığı
-gizlediğini göstermiştir: 7.075 missense kaydında ROC-AUC `0.5703`, duyarlılık
-`%31,96`dır. Frameshift ve stop gruplarında pozitif sınıf oranı sırasıyla
+gizlediğini göstermiştir: 7.075 missense kaydında ROC-AUC `0.5696`, duyarlılık
+`%31,49`dır. Frameshift ve stop gruplarında pozitif sınıf oranı sırasıyla
 `%99,40` ve `%99,69` olduğundan çok yüksek AP/duyarlılık değerleri güçlü sınıf
 dengesizliğiyle birlikte yorumlanmalıdır. Ayrıntılı, sürüm kontrollü sonuç özeti
 `docs/hgvs_parser_ablation_result.md` dosyasındadır; yerel ham örnek ve tablo
@@ -389,17 +395,46 @@ validation üzerinde hiperparametre taraması yapılmaz ve test bölümü yükle
 
 | Model | ROC-AUC | AP | Recall | Özgüllük | F1 |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| Lojistik regresyon | 0.9824 | 0.9810 | 0.8908 | 0.9564 | 0.9195 |
-| HistGradientBoosting | 0.9839 | 0.9821 | 0.8984 | 0.9564 | 0.9238 |
+| Lojistik regresyon | 0.9824 | 0.9810 | 0.8902 | 0.9568 | 0.9194 |
+| HistGradientBoosting | 0.9839 | 0.9821 | 0.8954 | 0.9558 | 0.9218 |
 
-Ağaç modeli genel ROC-AUC'de `+0.00152`, AP'de `+0.00112` ve recall'da
-`+0.00760` artış sağlamış; yanlış negatif sayısını 2.902'den 2.700'e düşürürken
-yanlış pozitif sayısını 1.241'de bırakmıştır. Ancak missense ROC-AUC
-`0.5703 → 0.5574`, missense recall `0.3196 → 0.3149` olmuştur. Synonymous
+Ağaç modeli genel ROC-AUC'de `+0.00155`, AP'de `+0.00114` ve recall'da
+`+0.00523` artış sağlamış; yanlış negatif sayısını 2.919'dan 2.780'e düşürürken
+yanlış pozitif sayısını 1.231'den 1.259'a çıkarmıştır. Ancak missense ROC-AUC
+`0.5696 → 0.5555`, missense recall `0.3149 → 0.2893` olmuştur. Synonymous
 pozitifleri yine yakalanmamış; frameshift ve stop-gained/changed gruplarında
 özgüllük yine sıfır kalmıştır. Bu nedenle küçük genel artış, ana modelleme
 sorununun çözüldüğü anlamına gelmez. Ayrıntılı sonuçlar
 `docs/tree_model_comparison_result.md` dosyasındadır.
+
+### Hedefli missense biyolojik özellikleri
+
+Standart missense protein değişimlerinden gen, transkript ve protein konumunu
+modele taşımadan aminoasit çifti, Grantham uzaklığı, BLOSUM62 skoru, hidropati
+farkı ve fizikokimyasal sınıf geçişleri üretmek için:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\build_missense_features.py
+```
+
+47.708 missense kaydın tamamı standart aminoasit çifti olarak ayrıştırılmıştır.
+Bu özelliklerin kontrollü lojistik regresyon ablasyonunu çalıştırmak için:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\run_missense_feature_ablation.py
+```
+
+| Profil | Genel ROC-AUC | Genel F1 | Missense ROC-AUC | Missense AP | Missense recall |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| HGVS referans | 0.9824 | 0.9194 | 0.5696 | 0.5078 | 0.3149 |
+| + missense biyolojik özellikler | 0.9859 | 0.9381 | 0.7513 | 0.6878 | 0.5704 |
+
+Kazanç missense grubunda yoğunlaşmıştır: ROC-AUC `+0.1817`, AP `+0.1800`,
+recall `+0.2554` ve F1 `+0.2317`. Bununla birlikte bu hâlâ tek sabit validation
+ölçümüdür; aminoasit değişim kategorileri ClinVar seçim örüntülerini de
+öğrenebilir. Ana modele geçmeden önce train-only gene-disjoint çapraz doğrulama
+ve daha sonra bağımsız dış değerlendirme gerekir. Ayrıntılar
+`docs/missense_feature_ablation_result.md` dosyasındadır.
 
 ### Train-only gene-disjoint çapraz doğrulama
 
