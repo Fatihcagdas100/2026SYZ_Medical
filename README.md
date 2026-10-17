@@ -5,19 +5,21 @@ patojenik/benign sınıflandırılması üzerine yürütülen çalışma.
 
 ## Mevcut durum
 
-- Projeye özel Python 3.13 sanal ortamı `.venv` altında oluşturuldu.
-- ClinVar `variant_summary.txt.gz` dosyasının başlığı ve üç örnek kaydı,
-  dosyanın tamamı belleğe alınmadan incelendi.
-- Dosyada 43 sütun bulundu.
-- Aynı varyantın GRCh37 ve GRCh38 için ayrı satırlarda bulunabildiği görüldü.
-- Birleşik klinik etiketlerin (ör. `Pathogenic/Likely pathogenic`) ayrıca ele
-  alınması gerektiği belirlendi.
 - Katı `GRCh38 + germline + tam Pathogenic/Benign` politikasıyla 367.196
-  benzersiz varyanttan oluşan ilk veri seti hazırlandı.
-- Sızıntı riski yüksek kimlik, gen ve konum alanlarını kullanmayan yapısal
-  özellikler üretildi ve sabit `%70 / %15 / %15` veri ayrımı oluşturuldu.
-- İlk lojistik regresyon baseline'ı yalnızca `train` üzerinde eğitildi ve
-  `validation` üzerinde değerlendirildi; `test` bölümü kilitli tutuluyor.
+  benzersiz ClinVar varyantı hazırlandı.
+- Kesin genom koordinatları ve gen kimliği modelden dışlandı; kromozom yalnızca
+  kategorik özellik olarak kullanıldı.
+- Son lojistik model HGVS sonuç özellikleriyle gene-disjoint train bölümünde
+  eğitildi. Train-only 5-fold gene-disjoint ROC-AUC `0.9828 ± 0.0041` oldu.
+- Gene-disjoint iç test 55.093 varyant ve 1.798 model-eğitiminde görülmemiş gen
+  grubunda bir kez değerlendirildi; ROC-AUC `0.9872`, AP `0.9870`, duyarlılık
+  `%96,61` ve özgüllük `%87,62` bulundu.
+- Ayrım geçiş denetimi, bu iç test varyantlarının `%85,00`'ının daha önceki
+  varyant-düzeyi deneylerde train veya validation rolünde bulunduğunu gösterdi.
+  Bu nedenle sonuç tamamen süreçten bağımsız nihai test değil, **iç
+  gene-disjoint değerlendirme** olarak raporlanır.
+- Sonraki doğrulama adımı geliştirme sürecinde hiç kullanılmamış bağımsız bir
+  dış veri kaynağıdır. Model klinik kullanıma hazır değildir.
 
 ## Python ortamı
 
@@ -120,8 +122,8 @@ içinde kaydedilir.
 
 ### Temel özellik tablosunu oluşturma
 
-Kimlik, gen ve genom konumu gibi ezberleme riski yüksek alanları dışarıda
-tutarak ilk yapısal özellik tablosunu üretmek için:
+Kimlik, gen ve kesin genom koordinatları gibi ezberleme riski yüksek alanları
+dışarıda tutarak ilk yapısal özellik tablosunu üretmek için:
 
 ```powershell
 .\.venv\Scripts\python.exe scripts\build_baseline_features.py
@@ -269,10 +271,11 @@ Eksiklik bayrağı olmayan ana modelin iki validation protokolündeki karşıla�
 | Varyant düzeyinde ayrım | 0.7845 | 0.6945 | 0.7211 |
 | Görülmemiş gen bileşenleri | 0.7630 | 0.6678 | 0.7018 |
 
-Görülmemiş genlerdeki düşüş, yalnızca varyant-düzeyi ayrımın yeni genlere
-genelleme performansını iyimser gösterebildiğini belirtir. Bundan sonraki model
-karşılaştırmalarında gene-disjoint validation daha katı ana geliştirme ölçütü
-olarak kullanılmalıdır; test bölümü model seçimi için açılmaz.
+Gene-disjoint validation'da daha düşük performans gözlenmiştir. Bu bulgu daha
+zor yeni-gen genellemesiyle uyumludur; ancak iki ayrımdaki gen ve grup
+dağılımları da değiştiği için düşüş tek bir nedene bağlanamaz. Bundan sonraki
+model karşılaştırmalarında gene-disjoint validation daha katı ana geliştirme
+ölçütü olarak kullanılmalıdır; bu aşamada test model seçimi için açılmamıştır.
 
 ### HGVS sonuç özellikleri
 
@@ -323,7 +326,9 @@ stop-gained, frameshift ve splice çekirdeği etkileri patojeniklik yönünde;
 synonymous ve deep-intronic sınıfları benign yönünde ağırlık almıştır. Bununla
 birlikte sonuç hâlâ ClinVar validation verisine aittir. ClinVar'ın anotasyon ve
 seçim yanlılıkları dış veri performansını yükseltebilir veya düşürebilir; bu
-model klinik kullanıma hazır değildir ve kilitli test henüz açılmamıştır.
+model klinik kullanıma hazır değildir. Bu validation analizi yapıldığı aşamada
+gene-disjoint test henüz açılmamıştı; güncel değerlendirme durumu belgenin
+başındaki "Mevcut durum" bölümündedir.
 
 ### Train-only gene-disjoint çapraz doğrulama
 
@@ -359,7 +364,8 @@ holdout fold'una dağılmamıştır. Bu sonuçların sabit gene-disjoint validat
 ROC-AUC değeri olan `0.9824` ile yakın olması, model performansının seçilmiş tek
 bir train/validation ayrımına güçlü biçimde bağlı olmadığına dair olumlu bir
 kararlılık kontrolüdür. Bu analiz dış veri doğrulamasının yerine geçmez ve
-kilitli test bölümü hâlâ açılmamıştır.
+bu train-only analiz çalıştırıldığında test bölümü henüz açılmamıştı. Güncel
+değerlendirme durumu belgenin başındaki "Mevcut durum" bölümündedir.
 
 ### OOF olasılık kalibrasyonu
 
@@ -465,10 +471,11 @@ Test yalnızca bir kez açılır. Sonuç görüldükten sonra model veya eşik
 değiştirilmeden birincil sonuç raporlanır; başarısızlık durumunda gelecekteki
 iddialar için yeni bağımsız holdout gerekir.
 
-### Nihai kilitli test sonucu
+### İç gene-disjoint değerlendirme sonucu
 
-Kilitli test 55.093 varyant ve 1.798 görülmemiş gen grubunda tek sefer
-değerlendirilmiş, önceden belirlenen beş başarı kapısının tamamı geçilmiştir:
+Gene-disjoint test 55.093 varyant ve son modelin eğitiminde görülmemiş 1.798 gen
+grubunda tek sefer değerlendirilmiş, önceden belirlenen beş proje-içi başarı
+kapısının tamamı geçilmiştir:
 
 | Test metriği | Değer |
 | --- | ---: |
@@ -487,6 +494,35 @@ yüksektir.
 teknik denetimle incelenmiştir. Eğitimdeki string kategorik veri sözleşmesi
 uygulandığında 208 olasılık değişmiş, hiçbir sınıf kararı değişmemiş ve bütün
 başarı kapıları yine geçilmiştir. Orijinal koşu korunmuştur. Ayrıntılı sonuç ve
-bütünlük hash'leri `docs/final_test_result.md` dosyasındadır. Bu iç test
-bağımsız dış doğrulamanın veya klinik değerlendirmenin yerine geçmez.
+bütünlük hash'leri `docs/final_test_result.md` dosyasındadır. İlk ve düzeltilmiş
+ROC-AUC/AP değerleri ayrı raporlanır; sınıf kararlarının aynı kalması sıralama
+ve kalibrasyon ölçülerinin tam olarak aynı kaldığı anlamına gelmez.
+
+Bu başarı kapıları proje başlamadan tanımlanmış klinik veya TEKNOFEST standartları
+değil, bu çalışma içinde test açılmadan önce belirlenen iç kabul ölçütleridir.
+Yarışma başarısı veya klinik geçerlilik standardı olarak sunulamazlar.
+
+### Eski/yeni ayrım geçiş denetimi
+
+Varyant-düzeyi ilk ayrımla gene-disjoint ayrımın rollerini karşılaştırmak için:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\audit_split_transition.py
+```
+
+Son gene-disjoint test varyantlarının önceki rolleri:
+
+| Önceki varyant-düzeyi rol | Varyant | Son test içindeki oran |
+| --- | ---: | ---: |
+| Train | 38.630 | %70,12 |
+| Validation | 8.200 | %14,88 |
+| Test | 8.263 | %15,00 |
+
+Son model doğrudan yalnızca yeni gene-disjoint train bölümünde eğitildi ve gen
+grubu çakışması yoktu. Buna karşın son testin 46.830 varyantı (`%85,00`) daha
+önceki deneylerde train veya validation rolünde bulundu. Önceki validation
+sonuçları hata incelemesini ve özellik geliştirmeyi etkilediği için mevcut test
+geliştirme süreci açısından tamamen görülmemiş sayılamaz. Sonuç bu nedenle
+**iç gene-disjoint değerlendirme** olarak sunulur; bağımsız nihai iddia için
+harici değerlendirme gerekir.
 
