@@ -68,3 +68,16 @@ gösterir. Ayrıntılı çıktılar `reports/generated/clinvar_audit/` altında 
 `VariationID` tekrarları geçici bir SQLite dosyasında izlendiği için milyonlarca
 kimlik bellekte tutulmaz. Geçici indeks işlem sonunda otomatik olarak silinir.
 
+### İlk ikili alt küme profilini çıkarma
+
+Henüz yeni veri seti yazmadan `GRCh38 + germline + tam Pathogenic/Benign`
+filtrelerinin kaç kayıt bıraktığını görmek için:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\profile_initial_binary_subset.py
+```
+
+Sonuçlar `reports/generated/initial_binary_subset/` altında oluşturulur. Bu
+adımda `Likely pathogenic`, `Likely benign`, birleşik, belirsiz ve çelişkili
+etiketler bilinçli olarak ikili hedefe katılmaz.
+
