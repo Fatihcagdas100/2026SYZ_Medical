@@ -232,3 +232,45 @@ Bu nedenle sonraki model geliştirme adımı yalnızca genel skoru yükseltmeye
 değil, özellikle SNV'lerde sınıf ayrımını güçlendirecek biyolojik özelliklere ve
 özellik etkileşimlerine odaklanmalıdır.
 
+### Gen-grubu çakışmasız veri ayrımı
+
+Aynı genin veya ortak gen taşıyan çok-genli kayıtların farklı veri bölümlerine
+düşmesini engelleyen daha katı değerlendirme ayrımını üretmek için:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\build_gene_disjoint_split.py
+```
+
+Betik noktalı virgül veya virgülle ayrılmış gen sembollerini bağlı bileşenler
+olarak birleştirir. Yirmi sınıf-korumalı gen katının 14'ü train, 3'ü validation,
+3'ü test olarak atanır. Çıktı
+`data/processed/baseline_gene_disjoint_split.tsv`, sayımlar ve bütünlük
+kontrolleri `reports/generated/gene_disjoint_split/` altında tutulur. Bu ayrım,
+varyant düzeyindeki ilk ayrıma göre daha zordur ve modelin eğitimde hiç görmediği
+gen gruplarına genellemesini ölçer.
+
+Mevcut veri anlık görüntüsünde 11.904 bağlı gen bileşeni oluşmuştur. Ayrım
+sonucunda train bölümünde 257.035, validation bölümünde 55.068 ve kilitli test
+bölümünde 55.093 varyant vardır; bölümler arasındaki gen grubu çakışması sıfırdır.
+
+Aynı lojistik baseline'ı bu ayrım üzerinde çalıştırmak için:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\train_logistic_baseline.py `
+  --split data\processed\baseline_gene_disjoint_split.tsv `
+  --report-dir reports\generated\logistic_baseline_gene_disjoint `
+  --artifact-dir artifacts\logistic_baseline_gene_disjoint
+```
+
+Eksiklik bayrağı olmayan ana modelin iki validation protokolündeki karşılaştırması:
+
+| Validation protokolü | ROC-AUC | F1 | Dengeli doğruluk |
+| --- | ---: | ---: | ---: |
+| Varyant düzeyinde ayrım | 0.7845 | 0.6945 | 0.7211 |
+| Görülmemiş gen bileşenleri | 0.7630 | 0.6678 | 0.7018 |
+
+Görülmemiş genlerdeki düşüş, yalnızca varyant-düzeyi ayrımın yeni genlere
+genelleme performansını iyimser gösterebildiğini belirtir. Bundan sonraki model
+karşılaştırmalarında gene-disjoint validation daha katı ana geliştirme ölçütü
+olarak kullanılmalıdır; test bölümü model seçimi için açılmaz.
+
