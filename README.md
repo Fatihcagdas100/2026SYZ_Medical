@@ -373,6 +373,34 @@ dengesizliğiyle birlikte yorumlanmalıdır. Ayrıntılı, sürüm kontrollü so
 çıktıları `reports/generated/hgvs_parser_audit/` ile
 `reports/generated/hgvs_ablation/` altındadır.
 
+### Aynı özelliklerle ağaç modeli karşılaştırması
+
+Tam HGVS özellik setinde doğrusal olmayan etkileşimlerin katkısını tek bir sabit
+ağaç baseline'ıyla ölçmek için:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\compare_tree_model.py
+```
+
+Betik referans lojistik regresyon ile `HistGradientBoostingClassifier` modelini
+aynı gene-disjoint train/validation ayrımı, aynı özellikler, `seed=2027` ve
+sabit `0.5` eşikle karşılaştırır. Ağaç ayarları tek koşudan önce sabitlenmiştir;
+validation üzerinde hiperparametre taraması yapılmaz ve test bölümü yüklenmez.
+
+| Model | ROC-AUC | AP | Recall | Özgüllük | F1 |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Lojistik regresyon | 0.9824 | 0.9810 | 0.8908 | 0.9564 | 0.9195 |
+| HistGradientBoosting | 0.9839 | 0.9821 | 0.8984 | 0.9564 | 0.9238 |
+
+Ağaç modeli genel ROC-AUC'de `+0.00152`, AP'de `+0.00112` ve recall'da
+`+0.00760` artış sağlamış; yanlış negatif sayısını 2.902'den 2.700'e düşürürken
+yanlış pozitif sayısını 1.241'de bırakmıştır. Ancak missense ROC-AUC
+`0.5703 → 0.5574`, missense recall `0.3196 → 0.3149` olmuştur. Synonymous
+pozitifleri yine yakalanmamış; frameshift ve stop-gained/changed gruplarında
+özgüllük yine sıfır kalmıştır. Bu nedenle küçük genel artış, ana modelleme
+sorununun çözüldüğü anlamına gelmez. Ayrıntılı sonuçlar
+`docs/tree_model_comparison_result.md` dosyasındadır.
+
 ### Train-only gene-disjoint çapraz doğrulama
 
 HGVS modelinin tek bir gen ayrımına özgü olup olmadığını, sabit validation ve
