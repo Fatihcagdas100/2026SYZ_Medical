@@ -465,3 +465,28 @@ Test yalnızca bir kez açılır. Sonuç görüldükten sonra model veya eşik
 değiştirilmeden birincil sonuç raporlanır; başarısızlık durumunda gelecekteki
 iddialar için yeni bağımsız holdout gerekir.
 
+### Nihai kilitli test sonucu
+
+Kilitli test 55.093 varyant ve 1.798 görülmemiş gen grubunda tek sefer
+değerlendirilmiş, önceden belirlenen beş başarı kapısının tamamı geçilmiştir:
+
+| Test metriği | Değer |
+| --- | ---: |
+| ROC-AUC | 0.9872 |
+| Average precision | 0.9870 |
+| Duyarlılık | 0.9661 |
+| Özgüllük | 0.8762 |
+| F1 | 0.9206 |
+| Dengeli doğruluk | 0.9212 |
+
+Donmuş `0.3623531848` eşiğinde 902 yanlış negatif ve 3.527 yanlış pozitif
+gözlenmiştir. Test ROC-AUC değeri validation değerinden yaklaşık 0.0048 daha
+yüksektir.
+
+İlk koşudaki `chromosome` karışık veri tipi uyarısı şeffaf biçimde ayrı bir
+teknik denetimle incelenmiştir. Eğitimdeki string kategorik veri sözleşmesi
+uygulandığında 208 olasılık değişmiş, hiçbir sınıf kararı değişmemiş ve bütün
+başarı kapıları yine geçilmiştir. Orijinal koşu korunmuştur. Ayrıntılı sonuç ve
+bütünlük hash'leri `docs/final_test_result.md` dosyasındadır. Bu iç test
+bağımsız dış doğrulamanın veya klinik değerlendirmenin yerine geçmez.
+
