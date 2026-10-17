@@ -173,3 +173,32 @@ Eksiklik bayrağının katkısı çok küçük olduğundan daha temkinli ana bas
 bu bayrağı kullanmayan modeldir. Bu değerler doğrulama sonucudur; nihai test
 performansı değildir.
 
+### Validation karar eşiği analizi
+
+ROC/precision-recall eğrilerini ve farklı duyarlılık hedeflerindeki karar
+eşiklerini üretmek için:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\analyze_validation_thresholds.py
+```
+
+Analiz yalnızca kaydedilmiş `validation` tahminlerini kabul eder; dosyada başka
+bir ayrım bulunursa betik hata verir. Sabit `0.5`, en yüksek Youden J ve en az
+`%80 / %90 / %95` duyarlılık çalışma noktaları
+`reports/generated/logistic_baseline/threshold_analysis/` altında raporlanır.
+Bir eşik validation üzerinde seçildikten sonra model ve eşik sabitlenmeli;
+nihai `test` değerlendirmesi yalnızca bir kez yapılmalıdır.
+
+Eksiklik bayrağı olmayan ana model için mevcut validation çalışma noktaları:
+
+| Politika | Eşik | Duyarlılık | Özgüllük | Yanlış negatif | Yanlış pozitif |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Sabit eşik | 0.5000 | %65,12 | %79,09 | 9.272 | 5.959 |
+| En az %80 duyarlılık | 0.3381 | %80,14 | %57,29 | 5.281 | 12.169 |
+| En az %90 duyarlılık | 0.2838 | %90,55 | %35,45 | 2.512 | 18.394 |
+| En az %95 duyarlılık | 0.2408 | %95,37 | %24,12 | 1.231 | 21.623 |
+
+Bu tablo bir eşik önerisi değil, yanlış negatiflerle yanlış pozitifler arasındaki
+ödünleşmenin validation verisindeki ölçümüdür. Kullanım senaryosunun hata
+maliyetleri tanımlanmadan operasyonel eşik sabitlenmez.
+
