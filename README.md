@@ -314,7 +314,8 @@ Gene-disjoint validation üzerindeki ana model karşılaştırması:
 | Özellik seti | ROC-AUC | Average precision | F1 | Dengeli doğruluk |
 | --- | ---: | ---: | ---: | ---: |
 | Yapısal baseline | 0.7630 | 0.7516 | 0.6678 | 0.7018 |
-| Yapısal + HGVS sonuçları | 0.9824 | 0.9810 | 0.9195 | 0.9236 |
+| Yapısal + HGVS biyolojik sonuçları | 0.9824 | 0.9810 | 0.9198 | 0.9239 |
+| Biyolojik sonuçlar + açık gösterim alanları | 0.9824 | 0.9810 | 0.9195 | 0.9236 |
 
 Sabit `0.5` eşiğinde genel yanlış negatif sayısı 10.238'den 2.902'ye, yanlış
 pozitif sayısı 6.015'ten 1.241'e düşmüştür. SNV alt grubunda ROC-AUC
@@ -329,6 +330,48 @@ seçim yanlılıkları dış veri performansını yükseltebilir veya düşüreb
 model klinik kullanıma hazır değildir. Bu validation analizi yapıldığı aşamada
 gene-disjoint test henüz açılmamıştı; güncel değerlendirme durumu belgenin
 başındaki "Mevcut durum" bölümündedir.
+
+### HGVS ayrıştırıcı denetimi ve özellik ablasyonu
+
+Ham `Name` alanındaki ayrıştırma örneklerini ve kaydedilmiş özelliklerin yeniden
+üretilebilirliğini denetlemek için:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\audit_hgvs_parser.py
+```
+
+Betik yalnızca gene-disjoint `train` ve `validation` bölümlerini ayrıştırır;
+`test` satırları dosya hizası kontrolünden sonra atlanır. Mevcut veride 312.103
+geliştirme kaydının altı HGVS alanında kaydedilmiş tabloyla uyuşmazlık yoktur.
+Missense, synonymous, frameshift, stop, protein anotasyonsuz ve belirsiz
+sınıflardan deterministik seçilen 60 ham örneğin basit bağımsız sözdizimi işaret
+kontrolü de 60/60 tutarlıdır. Bu kontrol klinik veya transkript-duyarlı uzman
+doğrulamasının yerine geçmez.
+
+Üç özellik profilini aynı lojistik model ve aynı gene-disjoint ayrım üzerinde
+karşılaştırmak için:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\run_hgvs_ablation.py
+```
+
+Ablasyon, performans artışının HGVS biyolojik sonuç sınıfları eklendiğinde
+oluştuğunu gösterir: yapısal profile göre ROC-AUC farkı `+0.2194`, AP farkı
+`+0.2294` olmuştur. `hgvs_sequence_type` ve `has_protein_annotation` açık
+gösterim alanlarının ayrıca eklenmesi ROC-AUC'yi `-0.000007`, AP'yi `+0.000018`
+değiştirmiştir; pratik ek katkı görülmemiştir. Bununla birlikte biyolojik
+profildeki `protein_effect=no_protein_annotation` kategorisi anotasyon yokluğunu
+dolaylı taşıyabildiği için bu karşılaştırma bütün anotasyon-varlığı sinyalini
+tamamen ortadan kaldıran bir deney değildir.
+
+Tam modelin validation alt grup analizi genel skorun önemli bir zayıflığı
+gizlediğini göstermiştir: 7.075 missense kaydında ROC-AUC `0.5703`, duyarlılık
+`%31,96`dır. Frameshift ve stop gruplarında pozitif sınıf oranı sırasıyla
+`%99,40` ve `%99,69` olduğundan çok yüksek AP/duyarlılık değerleri güçlü sınıf
+dengesizliğiyle birlikte yorumlanmalıdır. Ayrıntılı, sürüm kontrollü sonuç özeti
+`docs/hgvs_parser_ablation_result.md` dosyasındadır; yerel ham örnek ve tablo
+çıktıları `reports/generated/hgvs_parser_audit/` ile
+`reports/generated/hgvs_ablation/` altındadır.
 
 ### Train-only gene-disjoint çapraz doğrulama
 

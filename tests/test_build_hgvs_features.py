@@ -45,6 +45,17 @@ class BuildHgvsFeaturesTest(unittest.TestCase):
                 "hgvs_sequence_type": "genomic",
                 "coding_region": "not_coding_transcript",
             },
+            "NM_000009.1(GENE):c.301A>G (p.?)": {
+                "protein_effect": "uncertain_or_absent",
+                "has_protein_annotation": "1",
+            },
+            "GENE variant without HGVS notation": {
+                "hgvs_sequence_type": "unknown",
+                "dna_change_type": "no_hgvs_dna_notation",
+                "coding_region": "not_coding_transcript",
+                "protein_effect": "no_protein_annotation",
+                "has_protein_annotation": "0",
+            },
         }
         for name, expected in cases.items():
             with self.subTest(name=name):

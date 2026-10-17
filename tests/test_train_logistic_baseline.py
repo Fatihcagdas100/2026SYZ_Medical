@@ -163,6 +163,22 @@ class TrainLogisticBaselineTest(unittest.TestCase):
                 hgvs_manifest["models"]["without_missingness_flag"]["feature_columns"],
             )
 
+            biological_manifest = train_baselines(
+                features_path,
+                split_path,
+                report_dir / "hgvs_biological",
+                artifact_dir / "hgvs_biological",
+                seed=2027,
+                chunk_size=5,
+                feature_profile="hgvs_biological",
+            )
+            biological_columns = biological_manifest["models"][
+                "without_missingness_flag"
+            ]["feature_columns"]
+            self.assertIn("protein_effect", biological_columns)
+            self.assertNotIn("hgvs_sequence_type", biological_columns)
+            self.assertNotIn("has_protein_annotation", biological_columns)
+
 
 if __name__ == "__main__":
     unittest.main()

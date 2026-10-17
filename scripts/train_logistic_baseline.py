@@ -48,12 +48,16 @@ CATEGORICAL_FEATURES = (
     "substitution",
     "mutation_class",
 )
-HGVS_CATEGORICAL_FEATURES = (
-    "hgvs_sequence_type",
+HGVS_BIOLOGICAL_CATEGORICAL_FEATURES = (
     "dna_change_type",
     "coding_region",
     "splice_offset_category",
     "protein_effect",
+)
+HGVS_REPRESENTATION_CATEGORICAL_FEATURES = ("hgvs_sequence_type",)
+HGVS_CATEGORICAL_FEATURES = (
+    *HGVS_REPRESENTATION_CATEGORICAL_FEATURES,
+    *HGVS_BIOLOGICAL_CATEGORICAL_FEATURES,
 )
 NUMERIC_FEATURES = (
     "reference_length",
@@ -62,12 +66,20 @@ NUMERIC_FEATURES = (
     "absolute_length_delta",
     "is_canonical_snv",
 )
-HGVS_NUMERIC_FEATURES = ("has_protein_annotation",)
+HGVS_REPRESENTATION_NUMERIC_FEATURES = ("has_protein_annotation",)
+HGVS_NUMERIC_FEATURES = HGVS_REPRESENTATION_NUMERIC_FEATURES
 MISSINGNESS_FEATURE = "vcf_alleles_missing"
 FEATURE_COLUMNS = (*CATEGORICAL_FEATURES, *NUMERIC_FEATURES, MISSINGNESS_FEATURE)
 FEATURE_PROFILES = {
     "baseline": {
         "categorical": CATEGORICAL_FEATURES,
+        "numeric": NUMERIC_FEATURES,
+    },
+    "hgvs_biological": {
+        "categorical": (
+            *CATEGORICAL_FEATURES,
+            *HGVS_BIOLOGICAL_CATEGORICAL_FEATURES,
+        ),
         "numeric": NUMERIC_FEATURES,
     },
     "hgvs": {
