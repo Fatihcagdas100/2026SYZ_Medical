@@ -41,9 +41,30 @@ Kaynak: [NCBI ClinVar indirme sayfası](https://www.ncbi.nlm.nih.gov/clinvar/doc
 
 Doğrudan dosya: [variant_summary.txt.gz](https://ftp.ncbi.nlm.nih.gov/pub/clinvar/tab_delimited/variant_summary.txt.gz)
 
-## Sıradaki adım
+## Veri denetimi
 
-Ham dosyayı parça parça okuyarak genom referansı, klinik etiket, köken,
-değerlendirme durumu, eksik değer ve tekrar dağılımlarını raporlayan yeniden
-çalıştırılabilir bir veri denetim betiği hazırlanacak.
+Tam dosyayı belleğe yüklemeden denetlemek için:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\audit_variant_summary.py
+```
+
+Önce hızlı bir deneme yapmak için:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\audit_variant_summary.py --max-rows 10000
+```
+
+Betik terminalde bütün sütun adlarını ve seçili alanlardan örnek kayıtları
+gösterir. Ayrıntılı çıktılar `reports/generated/clinvar_audit/` altında üretilir:
+
+- `summary.json`: tarama ve tekrar özeti,
+- `columns.csv`: sıralı sütun listesi,
+- `column_profile.csv`: boş, `-`, `na` ve dolu değer sayıları,
+- `categorical_distributions.csv`: seçili sütunların değer dağılımları,
+- `sample_rows.tsv`: ilk örnek kayıtlar ve 43 sütunun tamamı,
+- `variation_id_repeat_examples.csv`: en sık tekrarlanan kimlik örnekleri.
+
+`VariationID` tekrarları geçici bir SQLite dosyasında izlendiği için milyonlarca
+kimlik bellekte tutulmaz. Geçici indeks işlem sonunda otomatik olarak silinir.
 
