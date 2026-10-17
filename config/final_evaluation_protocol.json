@@ -1,0 +1,29 @@
+{
+  "protocol_version": "1.0",
+  "status": "pre_test_frozen",
+  "intended_use": "research_variant_prioritization",
+  "clinical_diagnosis_authorized": false,
+  "selected_model": "without_missingness_flag",
+  "selected_feature_profile": "hgvs",
+  "operating_point": {
+    "policy": "sensitivity_at_least_0.95",
+    "sensitivity_target": 0.95
+  },
+  "test_acceptance": {
+    "minimum_roc_auc": 0.97,
+    "minimum_average_precision": 0.97,
+    "minimum_sensitivity_at_frozen_threshold": 0.93,
+    "minimum_specificity_at_frozen_threshold": 0.85,
+    "maximum_roc_auc_drop_from_validation": 0.02
+  },
+  "test_policy": {
+    "maximum_evaluations": 1,
+    "model_or_threshold_changes_after_test_are_forbidden_before_primary_reporting": true,
+    "failed_acceptance_requires_a_new_external_holdout_for_future_claims": true
+  },
+  "limitations": [
+    "The model is a research prioritization prototype, not a clinical diagnostic system.",
+    "The internal locked test is not a substitute for independent external validation.",
+    "Predictions must not be interpreted as individual clinical risk without expert review."
+  ]
+}

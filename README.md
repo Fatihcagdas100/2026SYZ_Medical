@@ -394,3 +394,74 @@ yüzde puanı düşüktür. Bu nedenle genel bir yeniden kalibrasyon şimdilik
 uygulanmamış; model olasılıklarının bireysel klinik risk olarak değil, öncelikle
 sıralama ve araştırma amaçlı skor olarak ele alınması korunmuştur.
 
+### OOF belirsiz bölge ve hata analizi
+
+Sabit `0.5` karar eşiğinin çevresindeki `0.20–0.80` olasılık bölgesini HGVS ve
+varyant alt gruplarında incelemek için:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\analyze_oof_uncertainty.py
+```
+
+Betik train OOF tahminlerini HGVS özellikleriyle VariationID üzerinden
+eşleştirir. Düşük, belirsiz ve yüksek olasılık bölgelerinin hata yükünü;
+belirsiz bölgedeki alt grup hata oranlarını ve belirsiz bölge dışında kalan
+yüksek güvenli hataları raporlar. Validation ve test verisi kullanılmaz.
+
+Gerçek OOF analizinde `0.20–0.80` bandı 39.924 varyantı (tüm train OOF
+verisinin `%15,53`'ü) kapsamış ve 18.943 hatanın 16.223'ünü (`%85,64`)
+yakalamıştır. Bölgelere göre hata yükü:
+
+| Olasılık bölgesi | Varyant | Hata | Hata oranı |
+| --- | ---: | ---: | ---: |
+| `<0.20` | 112.155 | 1.946 yanlış negatif | %1,74 |
+| `0.20–0.80` | 39.924 | 16.223 | %40,63 |
+| `>0.80` | 104.956 | 774 yanlış pozitif | %0,74 |
+
+Belirsiz bölge ağırlıklı olarak SNV/substitution ve missense varyantlarından
+oluşur; missense grubunda hata oranı `%44,63`'tür. Belirsiz bölge dışındaki
+1.946 yanlış negatifin 1.725'inde protein anotasyonu yoktur ve 1.357'si
+introniktir. 774 yüksek olasılıklı yanlış pozitifte frameshift (216) ve
+stop-gained/changed (143) sonuçları öne çıkar. Bu durum modelin genel sonuç
+sınıflarını güçlü öğrendiğini, fakat gen/transkript bağlamına özgü istisnaları
+tek başına çözemediğini gösterir.
+
+`0.20–0.80` bandı manuel inceleme kuyruğunu önceliklendirmek için yararlıdır;
+ancak düşük olasılık bölgesinde 1.946 patojenik varyant kaldığı için bandın
+dışındaki tahminler otomatik klinik karar veya “güvenli varyant” etiketi olarak
+kullanılamaz.
+
+### Test öncesi protokolü dondurma
+
+Ana model, validation çalışma eşiği, veri/artifact hash'leri ve test başarı
+kapılarını test etiketlerini okumadan kilitlemek için:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\freeze_evaluation_protocol.py
+```
+
+İnsan tarafından belirlenen kararlar
+`config/final_evaluation_protocol.json` içinde tutulur. Betik tüm geliştirme
+manifestlerinin test kullanmadığını, veri hash'lerinin birbiriyle tutarlı
+olduğunu ve model artifact'inin değiştirilmediğini doğrular. Ardından
+`reports/generated/final_protocol/` altında makine-okunur kilit ve protokol
+kartı oluşturur. Bu komut testi çalıştırmaz veya test etiketlerini okumaz.
+
+Dondurulan protokol sürümü `1.0` için ana model
+`without_missingness_flag`, HGVS özellik profili ve `0.3623531848` karar
+eşiğidir. Bu eşik validation üzerinde `%95,02` duyarlılık ve `%88,82`
+özgüllük sağlamıştır. Kilitli testin başarılı sayılması için aşağıdaki
+koşulların tümü birlikte aranacaktır:
+
+| Başarı kapısı | Sınır |
+| --- | ---: |
+| ROC-AUC | ≥ 0.97 |
+| Average precision | ≥ 0.97 |
+| Donmuş eşikte duyarlılık | ≥ 0.93 |
+| Donmuş eşikte özgüllük | ≥ 0.85 |
+| Validation'a göre ROC-AUC düşüşü | ≤ 0.02 |
+
+Test yalnızca bir kez açılır. Sonuç görüldükten sonra model veya eşik
+değiştirilmeden birincil sonuç raporlanır; başarısızlık durumunda gelecekteki
+iddialar için yeni bağımsız holdout gerekir.
+
