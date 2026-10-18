@@ -177,13 +177,19 @@ def cross_validate(
     n_splits: int = DEFAULT_N_SPLITS,
     threshold: float = DEFAULT_THRESHOLD,
     chunk_size: int = DEFAULT_CHUNK_SIZE,
+    feature_profile: str = FEATURE_PROFILE,
 ) -> dict[str, object]:
     if n_splits < 2:
         raise ValueError("n_splits en az 2 olmalıdır.")
     if not 0 < threshold < 1:
         raise ValueError("Eşik 0 ile 1 arasında olmalıdır.")
+    if feature_profile not in FEATURE_PROFILES:
+        raise ValueError(
+            f"Bilinmeyen özellik profili: {feature_profile}. "
+            f"Seçenekler: {', '.join(FEATURE_PROFILES)}"
+        )
 
-    profile = FEATURE_PROFILES[FEATURE_PROFILE]
+    profile = FEATURE_PROFILES[feature_profile]
     categorical_features = tuple(profile["categorical"])
     numeric_features = tuple(profile["numeric"])
     feature_names = (*categorical_features, *numeric_features)
@@ -371,7 +377,8 @@ def cross_validate(
             "source_partition": "train",
             "fixed_validation_used": False,
             "test_used": False,
-            "feature_profile": FEATURE_PROFILE,
+            "feature_profile": feature_profile,
+            "feature_columns": list(feature_names),
             "vcf_missingness_flag_used": False,
             "threshold": threshold,
             "threshold_policy": "fixed_in_advance_not_tuned",
@@ -408,6 +415,7 @@ def cross_validate(
 
     roc_summary = metric_summary.loc[metric_summary["metric"] == "roc_auc"].iloc[0]
     print("Train-only gene-disjoint çapraz doğrulama tamamlandı")
+    print(f"Özellik profili: {feature_profile}")
     print(f"Train satırı: {len(train_data):,}; gen grubu: {groups.nunique():,}")
     print(
         f"Fold ROC-AUC: {roc_summary['mean']:.4f} ± "
@@ -434,6 +442,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--n-splits", type=int, default=DEFAULT_N_SPLITS)
     parser.add_argument("--threshold", type=float, default=DEFAULT_THRESHOLD)
     parser.add_argument("--chunk-size", type=int, default=DEFAULT_CHUNK_SIZE)
+    parser.add_argument(
+        "--feature-profile",
+        choices=tuple(FEATURE_PROFILES),
+        default=FEATURE_PROFILE,
+        help="Eğitimde kullanılacak özellik profili.",
+    )
     return parser.parse_args()
 
 
@@ -449,6 +463,7 @@ def main() -> None:
         n_splits=args.n_splits,
         threshold=args.threshold,
         chunk_size=args.chunk_size,
+        feature_profile=args.feature_profile,
     )
 
 

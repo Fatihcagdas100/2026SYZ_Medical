@@ -19,7 +19,9 @@ patojenik/benign sınıflandırılması üzerine yürütülen çalışma.
   Bu nedenle sonuç tamamen süreçten bağımsız nihai test değil, **iç
   gene-disjoint değerlendirme** olarak raporlanır.
 - Sonraki doğrulama adımı geliştirme sürecinde hiç kullanılmamış bağımsız bir
-  dış veri kaynağıdır. Model klinik kullanıma hazır değildir.
+  dış veri kaynağıdır. `HGVS + missense` dış doğrulama adayı yalnızca train ve
+  validation ile donduruldu; dış kohort henüz değerlendirilmedi. Model klinik
+  kullanıma hazır değildir.
 
 ## Python ortamı
 
@@ -472,6 +474,45 @@ bir train/validation ayrımına güçlü biçimde bağlı olmadığına dair olu
 kararlılık kontrolüdür. Bu analiz dış veri doğrulamasının yerine geçmez ve
 bu train-only analiz çalıştırıldığında test bölümü henüz açılmamıştı. Güncel
 değerlendirme durumu belgenin başındaki "Mevcut durum" bölümündedir.
+
+### Missense özelliği için train-only OOF kararlılık kontrolü
+
+Missense biyolojik özelliklerinin validation kazanımının tek bir ayrımın tesadüfü
+olup olmadığını sınamak için, iki profil aynı train satırlarında ve aynı 5-fold
+`StratifiedGroupKFold` atamalarıyla tekrar karşılaştırıldı:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\run_missense_gene_disjoint_cv.py
+```
+
+Sabit validation ve kilitli test bu koşuda yüklenmez. Birleştirilmiş OOF sonuçları
+aynı yönü doğrulamıştır:
+
+| Grup | HGVS ROC-AUC | + missense ROC-AUC | HGVS AP | + missense AP | HGVS recall | + missense recall |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Tüm train OOF | 0.9829 | 0.9862 | 0.9823 | 0.9857 | 0.8959 | 0.9262 |
+| Missense train OOF | 0.5503 | 0.7358 | 0.4939 | 0.6811 | 0.3200 | 0.5691 |
+
+Missense alt grubundaki farklar ROC-AUC için `+0.1855`, AP için `+0.1871` ve
+recall için `+0.2491` olmuştur. Aynı satırların fold ataması iki profil arasında
+VariationID düzeyinde doğrulanmıştır. Bu, gözlemin yalnızca tek sabit validation
+ayrımına bağlı olmadığını destekleyen bir iç geliştirme kanıtıdır; bağımsız dış
+veri ya da klinik geçerlilik kanıtı değildir. Ayrıntılar
+`docs/missense_gene_disjoint_cv_result.md` dosyasındadır.
+
+### Dış doğrulama adayı modeli dondurma
+
+Profil seçimi tamamlandıktan sonra aday modeli yalnızca `train + validation`
+üzerinde yeniden eğitip, dış kohort etiketleri görülmeden dondurmak için:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\freeze_external_candidate.py
+```
+
+Bu işlem `hgvs_missense` profilini, sabit `0.5` karar eşiğini ve artifact
+SHA-256 değerini yerel model kartına yazar. Kilitli iç test kullanılmaz. Dış
+kohortun kabul kriterleri ve değerlendirme kuralı
+`docs/external_validation_protocol.md` dosyasında tanımlıdır.
 
 ### OOF olasılık kalibrasyonu
 

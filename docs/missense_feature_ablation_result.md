@@ -88,9 +88,10 @@ etiketleme örüntülerini de öğrenebilir; katsayılar nedensel biyolojik etki
 yorumlanmamalıdır.
 
 Protein konumu, korunmuşluk, yapısal bölge ve dış popülasyon frekansı henüz
-kullanılmamıştır. Yeni profili ana model adayı yapmadan önce train-only
-gene-disjoint çapraz doğrulamada fold kararlılığı ölçülmeli, ardından geliştirme
-sürecinde kullanılmamış dış veriyle doğrulama planlanmalıdır.
+kullanılmamıştır. Sonraki train-only gene-disjoint OOF kararlılık kontrolü
+aynı kazanç yönünü doğrulamıştır; ayrıntılı sonuç
+`docs/missense_gene_disjoint_cv_result.md` dosyasındadır. Buna rağmen geliştirme
+sürecinde kullanılmamış dış veriyle doğrulama hâlâ gereklidir.
 
 ## Yeniden çalıştırma
 
