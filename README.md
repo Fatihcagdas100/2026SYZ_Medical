@@ -514,6 +514,20 @@ SHA-256 değerini yerel model kartına yazar. Kilitli iç test kullanılmaz. Dı
 kohortun kabul kriterleri ve değerlendirme kuralı
 `docs/external_validation_protocol.md` dosyasında tanımlıdır.
 
+Kabul edilmiş dış ikili kohorttan aynı özellik şemasını üretmek için:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\build_external_features.py `
+  --input data\external\admitted_binary.tsv.gz `
+  --output data\external\admitted_missense_features.tsv.gz
+```
+
+Ardından dondurulmuş artifact ile tek-seferlik ölçüm için:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\evaluate_external_candidate.py
+```
+
 ### OOF olasılık kalibrasyonu
 
 Gene-disjoint çapraz doğrulamadaki olasılıkların güvenilirliğini incelemek için:
