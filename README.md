@@ -514,6 +514,20 @@ SHA-256 değerini yerel model kartına yazar. Kilitli iç test kullanılmaz. Dı
 kohortun kabul kriterleri ve değerlendirme kuralı
 `docs/external_validation_protocol.md` dosyasında tanımlıdır.
 
+Dış ham kohort, önce geliştirme verisinden çakışmasız hâle getirilmelidir:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\admit_external_cohort.py `
+  --external data\external\candidate_binary.tsv.gz `
+  --cohort-kind independent `
+  --source-version "sağlayıcının-sürümü" `
+  --source-url "https://kaynak.example.org"
+```
+
+Bu adım `VariationID`, `AlleleID` ve GRCh38 koordinat-allel çakışmalarını; ayrıca
+koordinat/allel bilgisi eksik satırları dışarıda bırakır. Son değerlendirme,
+kabul ve özellik üretim manifestleri arasında SHA-256 zincirini doğrular.
+
 Kabul edilmiş dış ikili kohorttan aynı özellik şemasını üretmek için:
 
 ```powershell

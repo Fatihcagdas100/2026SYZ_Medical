@@ -21,6 +21,8 @@ except ModuleNotFoundError:  # Doğrudan `python scripts/...` çalıştırması 
 
 DEFAULT_CANDIDATE = Path("reports/generated/external_candidate/manifest.json")
 DEFAULT_FEATURES = Path("data/external/admitted_missense_features.tsv.gz")
+DEFAULT_ADMISSION = Path("reports/generated/external_admission/manifest.json")
+DEFAULT_FEATURE_MANIFEST = Path("reports/generated/external_features/manifest.json")
 DEFAULT_REPORT_DIR = Path("reports/generated/external_evaluation")
 DEFAULT_BOOTSTRAP_REPLICATES = 1_000
 DEFAULT_SEED = 2027
@@ -56,6 +58,8 @@ def bootstrap_intervals(targets: np.ndarray, probabilities: np.ndarray, *, seed:
 def evaluate_external_candidate(
     candidate_path: Path,
     features_path: Path,
+    admission_path: Path,
+    feature_manifest_path: Path,
     report_dir: Path,
     *,
     bootstrap_replicates: int = DEFAULT_BOOTSTRAP_REPLICATES,
@@ -64,8 +68,16 @@ def evaluate_external_candidate(
     if report_dir.exists() and any(report_dir.iterdir()):
         raise FileExistsError("Dış değerlendirme rapor klasörü boş olmalıdır; tek-sefer kuralı geçerlidir.")
     candidate = load_json(candidate_path)
+    admission = load_json(admission_path)
+    feature_manifest = load_json(feature_manifest_path)
     if candidate.get("status") != "frozen_for_external_validation_not_evaluated":
         raise ValueError("Aday model dış değerlendirme için dondurulmuş durumda değil.")
+    if admission.get("admission_decision") != "accepted":
+        raise ValueError("Dış kohort kabul manifesti accepted durumda değil.")
+    if admission.get("output", {}).get("sha256") != feature_manifest.get("input", {}).get("sha256"):
+        raise ValueError("Kabul edilen kohort ile özellik kaynağı hash zinciri uyuşmuyor.")
+    if feature_manifest.get("output", {}).get("sha256") != sha256_file(features_path):
+        raise ValueError("Dış özellik dosyası hash'i özellik manifestiyle uyuşmuyor.")
     model_info = candidate.get("model")
     if not isinstance(model_info, dict):
         raise ValueError("Aday model bilgisi eksik.")
@@ -94,6 +106,8 @@ def evaluate_external_candidate(
         "completed_at_utc": datetime.now(timezone.utc).isoformat(),
         "evaluation_number": 1,
         "candidate_manifest": {"path": str(candidate_path.resolve()), "sha256": sha256_file(candidate_path)},
+        "admission_manifest": {"path": str(admission_path.resolve()), "sha256": sha256_file(admission_path)},
+        "feature_manifest": {"path": str(feature_manifest_path.resolve()), "sha256": sha256_file(feature_manifest_path)},
         "external_features": {"path": str(features_path.resolve()), "sha256": sha256_file(features_path)},
         "frozen_artifact": {"path": str(artifact_path.resolve()), "sha256": sha256_file(artifact_path)},
         "data_policy": {"model_refit_after_external_labels": False, "threshold_changed_after_external_labels": False},
@@ -125,6 +139,8 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Dondurulmuş adayı dış özellik tablosunda tek seferde ölçer.")
     parser.add_argument("--candidate", type=Path, default=DEFAULT_CANDIDATE)
     parser.add_argument("--features", type=Path, default=DEFAULT_FEATURES)
+    parser.add_argument("--admission-manifest", type=Path, default=DEFAULT_ADMISSION)
+    parser.add_argument("--feature-manifest", type=Path, default=DEFAULT_FEATURE_MANIFEST)
     parser.add_argument("--report-dir", type=Path, default=DEFAULT_REPORT_DIR)
     parser.add_argument("--bootstrap-replicates", type=int, default=DEFAULT_BOOTSTRAP_REPLICATES)
     parser.add_argument("--seed", type=int, default=DEFAULT_SEED)
@@ -135,7 +151,7 @@ def main() -> None:
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")
     args = parse_args()
-    evaluate_external_candidate(args.candidate, args.features, args.report_dir, bootstrap_replicates=args.bootstrap_replicates, seed=args.seed)
+    evaluate_external_candidate(args.candidate, args.features, args.admission_manifest, args.feature_manifest, args.report_dir, bootstrap_replicates=args.bootstrap_replicates, seed=args.seed)
 
 
 if __name__ == "__main__":
