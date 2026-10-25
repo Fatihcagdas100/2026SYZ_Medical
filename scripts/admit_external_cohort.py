@@ -14,8 +14,10 @@ from pathlib import Path
 
 try:
     from scripts.build_baseline_features import MISSING_MARKERS, sha256_file
+    from scripts.variant_normalization import InvalidVariant, ReferenceGenome
 except ModuleNotFoundError:  # Doğrudan `python scripts/...` çalıştırması için.
     from build_baseline_features import MISSING_MARKERS, sha256_file  # type: ignore[no-redef]
+    from variant_normalization import InvalidVariant, ReferenceGenome
 
 
 DEFAULT_DEVELOPMENT = Path("data/processed/clinvar_grch38_germline_exact_binary.tsv.gz")
@@ -23,24 +25,16 @@ DEFAULT_EXTERNAL = Path("data/external/candidate_binary.tsv.gz")
 DEFAULT_OUTPUT = Path("data/external/admitted_binary.tsv.gz")
 DEFAULT_REPORT_DIR = Path("reports/generated/external_admission")
 REQUIRED_COLUMNS = {
-    "VariationID", "Type", "Name", "Chromosome", "PositionVCF",
+    "VariationID", "Type", "Name", "Assembly", "Chromosome", "PositionVCF",
     "ReferenceAlleleVCF", "AlternateAlleleVCF", "target_label", "target",
 }
 OPTIONAL_ALLELE_ID = "#AlleleID"
 OPTIONAL_GENE = "GeneSymbol"
 
 
-def normalized_coordinate_key(row: dict[str, str]) -> tuple[str, str, str, str] | None:
-    """Koordinat ve allel tam değilse güvenilir eşleştirme anahtarı üretme."""
-    values = (
-        row.get("Chromosome", "").strip(),
-        row.get("PositionVCF", "").strip(),
-        row.get("ReferenceAlleleVCF", "").strip().upper(),
-        row.get("AlternateAlleleVCF", "").strip().upper(),
-    )
-    if any(value.casefold() in MISSING_MARKERS for value in values):
-        return None
-    return values
+def gene_tokens(value: str) -> set[str]:
+    return {token.strip() for token in value.replace(",", ";").split(";")
+            if token.strip().casefold() not in MISSING_MARKERS | {"."}}
 
 
 def validate_label(row: dict[str, str], *, source_name: str) -> None:
@@ -53,10 +47,12 @@ def validate_label(row: dict[str, str], *, source_name: str) -> None:
         raise ValueError(f"{source_name} hedef eşleşmiyor: {row['VariationID']}")
 
 
-def load_development_index(path: Path) -> tuple[set[str], set[str], set[tuple[str, str, str, str]]]:
+def load_development_index(path: Path, reference: ReferenceGenome):
     identifiers: set[str] = set()
     allele_ids: set[str] = set()
     coordinates: set[tuple[str, str, str, str]] = set()
+    genes: set[str] = set()
+    unnormalizable = 0
     with gzip.open(path, "rt", encoding="utf-8", newline="") as handle:
         reader = csv.DictReader(handle, delimiter="\t")
         if reader.fieldnames is None:
@@ -69,12 +65,16 @@ def load_development_index(path: Path) -> tuple[set[str], set[str], set[tuple[st
             if not variation_id or variation_id in identifiers:
                 raise ValueError(f"Geliştirme VariationID tekil değil: {variation_id}")
             identifiers.add(variation_id)
-            if OPTIONAL_ALLELE_ID in reader.fieldnames and row[OPTIONAL_ALLELE_ID]:
+            if row.get(OPTIONAL_ALLELE_ID, "").casefold() not in MISSING_MARKERS | {"."}:
                 allele_ids.add(row[OPTIONAL_ALLELE_ID])
-            coordinate = normalized_coordinate_key(row)
-            if coordinate is not None:
-                coordinates.add(coordinate)
-    return identifiers, allele_ids, coordinates
+            genes.update(gene_tokens(row.get(OPTIONAL_GENE, "")))
+            try:
+                coordinates.add(reference.normalize(row))
+            except InvalidVariant as error:
+                if str(error) not in {"unsupported_or_missing_alleles", "invalid_position", "coordinate_out_of_range"}:
+                    raise ValueError(f"Geliştirme referans kontrolü başarısız: {variation_id}: {error}") from error
+                unnormalizable += 1
+    return identifiers, allele_ids, coordinates, genes, unnormalizable
 
 
 def admit_external_cohort(
@@ -86,6 +86,20 @@ def admit_external_cohort(
     cohort_kind: str,
     source_version: str,
     source_url: str,
+    reference_config: Path,
+) -> dict[str, object]:
+    with ReferenceGenome(reference_config) as reference:
+        return _admit_external_cohort(
+            development_path, external_path, output_path, report_dir,
+            cohort_kind=cohort_kind, source_version=source_version,
+            source_url=source_url, reference=reference,
+        )
+
+
+def _admit_external_cohort(
+    development_path: Path, external_path: Path, output_path: Path,
+    report_dir: Path, *, cohort_kind: str, source_version: str,
+    source_url: str, reference: ReferenceGenome,
 ) -> dict[str, object]:
     if cohort_kind not in {"independent", "temporal_clinvar"}:
         raise ValueError("cohort_kind independent veya temporal_clinvar olmalıdır.")
@@ -94,7 +108,9 @@ def admit_external_cohort(
     for path in (development_path, external_path):
         if not path.is_file():
             raise FileNotFoundError(f"Girdi bulunamadı: {path}")
-    development_ids, development_alleles, development_coordinates = load_development_index(development_path)
+    if output_path.resolve() in {development_path.resolve(), external_path.resolve()}:
+        raise ValueError("Kabul çıktısı girdi dosyasının üzerine yazılamaz.")
+    development_ids, development_alleles, development_coordinates, development_genes, unnormalizable = load_development_index(development_path, reference)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     report_dir.mkdir(parents=True, exist_ok=True)
     temporary_handle = tempfile.NamedTemporaryFile(
@@ -107,6 +123,8 @@ def admit_external_cohort(
     seen_external_ids: set[str] = set()
     overlap_examples: list[dict[str, str]] = []
     external_genes: set[str] = set()
+    annotations: list[dict[str, str]] = []
+    seen_coordinates: set[tuple[str, str, str, str]] = set()
 
     try:
         with (
@@ -133,15 +151,18 @@ def admit_external_cohort(
                     reasons.append("variation_id")
                 if (
                     OPTIONAL_ALLELE_ID in reader.fieldnames
-                    and row[OPTIONAL_ALLELE_ID]
+                    and row[OPTIONAL_ALLELE_ID].casefold() not in MISSING_MARKERS | {"."}
                     and row[OPTIONAL_ALLELE_ID] in development_alleles
                 ):
                     reasons.append("allele_id")
-                coordinate = normalized_coordinate_key(row)
-                if coordinate is None:
-                    reasons.append("missing_coordinate_allele")
-                elif coordinate in development_coordinates:
-                    reasons.append("coordinate_allele")
+                try:
+                    coordinate = reference.normalize(row)
+                    if coordinate in development_coordinates:
+                        reasons.append("coordinate_allele")
+                    if coordinate in seen_coordinates:
+                        raise ValueError(f"Dış kohortta aynı normalleştirilmiş varyant tekrarlandı: {variation_id}")
+                except InvalidVariant as error:
+                    reasons.append(str(error))
                 if reasons:
                     counters["excluded_rows"] += 1
                     for reason in reasons:
@@ -149,11 +170,20 @@ def admit_external_cohort(
                     if len(overlap_examples) < 100:
                         overlap_examples.append({"VariationID": variation_id, "exclusion_reasons": ";".join(reasons)})
                     continue
+                # Model kromozom kategorileri ClinVar biçimindedir (1, X, MT).
+                # Allel uzunluk tarifini koru; normalize anahtar yalnızca eşleştirme içindir.
+                row["Chromosome"] = coordinate[0]
                 writer.writerow(row)
+                seen_coordinates.add(coordinate)
                 counters["admitted_rows"] += 1
                 targets[row["target"]] += 1
-                if OPTIONAL_GENE in reader.fieldnames and row[OPTIONAL_GENE]:
-                    external_genes.update(gene.strip() for gene in row[OPTIONAL_GENE].split(";") if gene.strip())
+                genes = gene_tokens(row.get(OPTIONAL_GENE, ""))
+                external_genes.update(genes)
+                annotations.append({
+                    "VariationID": variation_id,
+                    "unseen_gene": "1" if genes and not genes.intersection(development_genes) else "0",
+                    "gene_status": "missing" if not genes else ("unseen" if not genes.intersection(development_genes) else "seen"),
+                })
         if targets.keys() != {"0", "1"}:
             raise ValueError("Kabul edilen dış kohort iki hedef sınıfı da içermelidir.")
         temporary_path.replace(output_path)
@@ -166,9 +196,16 @@ def admit_external_cohort(
         writer = csv.DictWriter(handle, fieldnames=["VariationID", "exclusion_reasons"])
         writer.writeheader()
         writer.writerows(overlap_examples)
+    annotation_path = report_dir / "admitted_annotations.tsv"
+    with annotation_path.open("w", encoding="utf-8", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=["VariationID", "unseen_gene", "gene_status"], delimiter="\t", lineterminator="\n")
+        writer.writeheader()
+        writer.writerows(annotations)
     manifest: dict[str, object] = {
         "created_at_utc": datetime.now(timezone.utc).isoformat(),
         "admission_decision": "accepted",
+        "schema_version": 2,
+        "reference": reference.metadata,
         "cohort_kind": cohort_kind,
         "source_metadata": {"version": source_version, "url": source_url},
         "inputs": {
@@ -176,12 +213,17 @@ def admit_external_cohort(
             "external_candidate": {"path": str(external_path.resolve()), "sha256": sha256_file(external_path)},
         },
         "output": {"path": str(output_path.resolve()), "sha256": sha256_file(output_path)},
-        "counts": {**dict(counters), "benign": targets["0"], "pathogenic": targets["1"], "external_gene_symbols_reported": len(external_genes)},
+        "counts": {**dict(counters), "benign": targets["0"], "pathogenic": targets["1"], "external_gene_symbols_reported": len(external_genes), "development_rows_without_normalizable_coordinates": unnormalizable},
         "overlap_policy": {
             "keys": ["VariationID", "#AlleleID", "GRCh38_coordinate_reference_alternate"],
             "missing_coordinate_allele_rows": "excluded",
             "development_overlap_rows": "excluded",
+            "normalization": "reference_checked_biallelic_left_alignment_and_trimming_v1",
+            "unsupported_complex_or_symbolic_alleles": "excluded",
+            "normalized_duplicate_external_variants": "abort",
+            "development_scope": "entire_previously_used_dataset_including_internal_test",
         },
+        "annotations": {"path": str(annotation_path.resolve()), "sha256": sha256_file(annotation_path)},
         "outputs": {"excluded_overlap_examples": str(examples_path.resolve())},
     }
     with (report_dir / "manifest.json").open("w", encoding="utf-8") as handle:
@@ -202,6 +244,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--cohort-kind", choices=("independent", "temporal_clinvar"), required=True)
     parser.add_argument("--source-version", required=True)
     parser.add_argument("--source-url", required=True)
+    parser.add_argument("--reference-config", type=Path, required=True)
     return parser.parse_args()
 
 
@@ -209,7 +252,7 @@ def main() -> None:
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")
     args = parse_args()
-    admit_external_cohort(args.development, args.external, args.output, args.report_dir, cohort_kind=args.cohort_kind, source_version=args.source_version, source_url=args.source_url)
+    admit_external_cohort(args.development, args.external, args.output, args.report_dir, cohort_kind=args.cohort_kind, source_version=args.source_version, source_url=args.source_url, reference_config=args.reference_config)
 
 
 if __name__ == "__main__":

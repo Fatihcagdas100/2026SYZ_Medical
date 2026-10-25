@@ -2,6 +2,8 @@
 
 Tarih: 18 Ekim 2026
 
+Teknik hat güncellemesi: 26 Ekim 2026
+
 ## Amaç
 
 Bu protokol, seçilmiş `HGVS + missense` lojistik modelinin daha önce hiç
@@ -43,6 +45,46 @@ Bir kohort aşağıdaki koşulların tamamını sağlamadan değerlendirmeye al�
    için ayrı, ikincil bir gene-disjoint dış alt analiz yapılır.
 6. Her iki sınıf da bulunmalı; sınıf sayıları ve prevalans raporlanmalıdır.
 
+### Referans ve normalizasyon
+
+Kabul betiği `--reference-config data/reference/grch38.json` ister. Bu dosya,
+kullanılacak **gerçek GRCh38** referansını ve FAI indeksini hash'leriyle sabitler.
+Yollar config dosyasının konumuna göre çözülür:
+
+```json
+{
+  "assembly": "GRCh38",
+  "fasta": "GRCh38.fa",
+  "fasta_sha256": "DOSYANIN_64_KARAKTER_SHA256_DEGERI",
+  "fai_sha256": "FAI_DOSYASININ_64_KARAKTER_SHA256_DEGERI"
+}
+```
+
+FASTA sıkıştırılmamış, FAI indeksi bu FASTA ile uyumlu olmalıdır. Hash eşleşmesi,
+seçilen dosyanın değişmediğini doğrular; assembly'nin kaynağı ve sürümü indirme
+kaydından ayrıca doğrulanır. Config'e `GRCh38` yazmak tek başına dosyanın GRCh38
+olduğunu kanıtlamaz. Referans henüz bu repository'ye indirilmedi.
+
+Her iki kaynaktaki `Assembly` sütunu gereklidir. Kabul algoritması A/C/G/T içeren
+iki allelli varyantlarda referans alleli denetler; ortak son/ön ekleri kaldırır ve
+indelleri tekrarlı bölgelerde referans bazlarıyla sola hizalar. `chr1`/`1` ve
+`chrM`/`MT` aynı kromozom anahtarına çevrilir. Model girdisinde kromozom adı da
+uyumlu biçime getirilir. Pozisyon ve allellerden türetilen normalleştirilmiş anahtar
+yalnızca çakışma içindir; mevcut modelin allel-uzunluk tarifi değiştirilmez.
+
+Sembolik, çok-allelli, belirsiz bazlı ve eksik alleller dışlanır; bu uygulama
+liftover veya karmaşık haplotip eşdeğerliği çözümü yapmaz. Geliştirme verisindeki
+normalleştirilemeyen kayıtların kimlikleri yine engel listesinde tutulur ve sayısı
+raporlanır. Gen yeniliği tüm eski veriyle karşılaştırılır; bu, iç testte görülmüş
+genleri de muhafazakâr biçimde 'görülmüş' kabul eder. Ham test etiketleri üzerinden
+metrik hesaplanmaz.
+
+FAI yerleşimi için [HTSlib faidx belgesi](https://www.htslib.org/doc/faidx.html),
+normalizasyonun yerleşik araç karşılığı için [BCFtools norm
+belgesi](https://samtools.github.io/bcftools/bcftools#norm) kullanılabilir. Bu
+repository'nin küçük varyant uygulaması yapay örneklerle sınanmıştır; BCFtools
+ile tam uyumluluk iddiası taşımaz.
+
 ClinVar'ın düzenli indirmeleri haftalık güncellenir ve aylık sürümler arşivlenir.
 ClinVar'ın daha sonraki bir arşiv sürümünden yalnızca yeni/çakışmasız kayıtlar
 oluşturmak **zamansal doğrulama** sağlar; kaynak bağımsızlığı sağlamaz. Bu ayrım
@@ -61,6 +103,23 @@ raporlanır:
 - tüm kohort ve missense alt grubu;
 - varsa hiç görülmemiş genler alt grubu;
 - dış kohortta HGVS/protein anotasyonu eksikliği dağılımı.
+
+Güven aralıkları, sınıf sayılarını koruyan satır bootstrap'ı ile ROC-AUC, AP,
+precision, recall, özgüllük ve F1 için hesaplanır. Gen içi bağımlılık bu
+aralıklarda modellenmez; yöntem ve bu sınırlama raporda yazılır. Boş veya tek
+sınıflı alt gruplar `insufficient_classes` olarak sayılarıyla raporlanır.
+
+### Tek değerlendirme kaydı
+
+Hash ve artifact kontrolleri geçtikten sonra, dış etiketler okunmadan önce
+`EVALUATION_STARTED.json` oluşturulur. Aday modelin manifest klasöründeki
+`evaluation_registry/<ham-kohort-sha256>.json` kaydı atomik `x` kipinde açılır;
+aynı kohortu farklı çıktı klasörüne yönlendirmek de tekrar değerlendirme sağlamaz.
+Hata veya yarıda kesilme kaydı silmez. Bu, yerel çalışma disiplini kilididir;
+dosyaları elle silmeye veya klasörleri kopyalamaya karşı erişim kontrolü değildir.
+
+Dondurulmuş model üreticisi de dolu artifact/rapor klasörünün üzerine yazmayı
+reddeder. Model yeniden eğitilmeden eski artifact korunur.
 
 Eşik dış kohortta ayarlanmaz; yeni model eğitilmez; dış metrikler görüldükten
 sonra birincil sonucu iyileştirmek için tekrar deneme yapılmaz. Ek analiz gerekirse

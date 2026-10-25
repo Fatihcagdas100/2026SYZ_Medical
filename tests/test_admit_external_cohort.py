@@ -1,5 +1,3 @@
-import csv
-import gzip
 import tempfile
 import unittest
 from pathlib import Path
@@ -7,37 +5,42 @@ from pathlib import Path
 import pandas as pd
 
 from scripts.admit_external_cohort import admit_external_cohort
+from tests.external_fixtures import make_row, write_reference, write_rows
 
 
 class AdmitExternalCohortTest(unittest.TestCase):
-    def test_removes_identifier_and_coordinate_overlap_and_keeps_binary_cohort(self) -> None:
-        columns = ["VariationID", "#AlleleID", "Type", "Name", "Chromosome", "PositionVCF", "ReferenceAlleleVCF", "AlternateAlleleVCF", "target_label", "target"]
-        development_rows = [
-            ["1", "11", "SNV", "NM_1(G):c.1A>G (p.Arg1Gly)", "1", "100", "A", "G", "Benign", "0"],
-        ]
-        external_rows = [
-            ["1", "21", "SNV", "NM_1(G):c.1A>G (p.Arg1Gly)", "1", "100", "A", "G", "Benign", "0"],
-            ["2", "22", "SNV", "NM_2(G):c.2C>T (p.Arg1Cys)", "1", "100", "A", "G", "Pathogenic", "1"],
-            ["3", "23", "SNV", "NM_3(G):c.3G>A (p.Gly1Arg)", "2", "200", "G", "A", "Benign", "0"],
-            ["4", "24", "SNV", "NM_4(G):c.4T>C (p.Val2Ala)", "3", "300", "T", "C", "Pathogenic", "1"],
-        ]
+    def test_normalized_indel_overlap_bad_build_and_reference_are_excluded(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            development = root / "development.tsv.gz"
-            external = root / "external.tsv.gz"
-            for path, rows in ((development, development_rows), (external, external_rows)):
-                with gzip.open(path, "wt", encoding="utf-8", newline="") as handle:
-                    writer = csv.writer(handle, delimiter="\t")
-                    writer.writerow(columns)
-                    writer.writerows(rows)
+            reference = write_reference(root)
+            development, external = root / "dev.tsv.gz", root / "external.tsv.gz"
+            write_rows(development, [make_row(1, 2, 0, reference="AA", alternate="A")])
+            write_rows(external, [
+                make_row(2, 4, 1, reference="AA", alternate="A"),
+                make_row(3, 7, 1, reference="C", alternate="T", assembly="GRCh37"),
+                make_row(4, 8, 0, reference="T", alternate="G"),
+                make_row(5, 7, 0, reference="C", alternate="T"),
+                make_row(6, 8, 1, reference="G", alternate="A"),
+            ])
             output = root / "admitted.tsv.gz"
-            manifest = admit_external_cohort(development, external, output, root / "report", cohort_kind="independent", source_version="v1", source_url="https://example.org")
-            admitted = pd.read_csv(output, sep="\t")
-            self.assertEqual(set(admitted["VariationID"].astype(str)), {"3", "4"})
-            self.assertEqual(manifest["counts"]["excluded_variation_id"], 1)
-            self.assertEqual(manifest["counts"]["excluded_coordinate_allele"], 2)
-            self.assertEqual(manifest["admission_decision"], "accepted")
+            manifest = admit_external_cohort(
+                development, external, output, root / "report", cohort_kind="independent",
+                source_version="synthetic", source_url="https://example.org/test",
+                reference_config=reference,
+            )
+            self.assertEqual(set(pd.read_csv(output, sep="\t")["VariationID"]), {5, 6})
+            self.assertEqual(manifest["counts"]["excluded_coordinate_allele"], 1)
+            self.assertEqual(manifest["counts"]["excluded_assembly_not_grch38"], 1)
+            self.assertEqual(manifest["counts"]["excluded_reference_allele_mismatch"], 1)
+            self.assertEqual(manifest["reference"]["assembly"], "GRCh38")
 
-
-if __name__ == "__main__":
-    unittest.main()
+    def test_duplicate_equivalent_external_indels_abort(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            config = write_reference(root)
+            development, external = root / "dev.tsv.gz", root / "external.tsv.gz"
+            write_rows(development, [make_row(1, 7, 0, reference="C", alternate="T")])
+            write_rows(external, [make_row(2, 2, 0, reference="AA", alternate="A"), make_row(3, 4, 1, reference="AA", alternate="A")])
+            with self.assertRaisesRegex(ValueError, "normalleştirilmiş"):
+                admit_external_cohort(development, external, root / "output.tsv.gz", root / "report", cohort_kind="independent", source_version="test", source_url="https://example.org", reference_config=config)
+            self.assertFalse((root / "output.tsv.gz").exists())

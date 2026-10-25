@@ -521,12 +521,15 @@ Dış ham kohort, önce geliştirme verisinden çakışmasız hâle getirilmelid
   --external data\external\candidate_binary.tsv.gz `
   --cohort-kind independent `
   --source-version "sağlayıcının-sürümü" `
-  --source-url "https://kaynak.example.org"
+  --source-url "https://kaynak.example.org" `
+  --reference-config data\reference\grch38.json
 ```
 
-Bu adım `VariationID`, `AlleleID` ve GRCh38 koordinat-allel çakışmalarını; ayrıca
-koordinat/allel bilgisi eksik satırları dışarıda bırakır. Son değerlendirme,
-kabul ve özellik üretim manifestleri arasında SHA-256 zincirini doğrular.
+Bu adım `Assembly=GRCh38`, referans alleli, `VariationID`, `AlleleID` ve referans
+üzerinde sola hizalanmış koordinat-allel çakışmalarını denetler. Desteklenmeyen
+veya eksik alleller dışlanır; dış kohortun kendi içindeki eşdeğer tekrarlar
+işlemi durdurur. Referans FASTA ve FAI hash'leri `grch38.json` içinde sabitlenir;
+örnek config şeması `docs/external_validation_protocol.md` içindedir.
 
 Kabul edilmiş dış ikili kohorttan aynı özellik şemasını üretmek için:
 
@@ -541,6 +544,48 @@ Ardından dondurulmuş artifact ile tek-seferlik ölçüm için:
 ```powershell
 .\.venv\Scripts\python.exe scripts\evaluate_external_candidate.py
 ```
+
+Değerlendirme etiketleri okumadan önce kalıcı `EVALUATION_STARTED.json` ve aday
+model klasöründe kohort hash'ine bağlı bir registry kaydı oluşturur. Yarım kalan
+koşu farklı rapor klasörüyle de yeniden başlatılmaz. Rapor tüm kohort, missense
+ve görülmemiş genler için metrikleri, karar hata sayılarını ve en az 1.000 tekrarlı
+bootstrap güven aralıklarını içerir. İki sınıfı bulunmayan alt gruplar açıkça
+işaretlenir. Yapay verili uçtan uca denetim:
+
+```powershell
+.\.venv\Scripts\python.exe -m unittest tests.test_external_pipeline
+```
+
+Açık kaynak adaylarının ön incelemesi: `docs/external_data_source_review.md`.
+
+### ClinGen eRepo kimlik ve uygunluk taraması
+
+İlk açık kaynak adayı için resmî arayüzün kullandığı API'den yerel anlık görüntü
+almak ve eski 367.196 varyantla kimlik örtüşmesini ölçmek için:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\download_clingen_erepo.py `
+  --output-dir data\external\clingen_erepo_2026-10-26
+.\.venv\Scripts\python.exe scripts\screen_clingen_erepo.py `
+  --snapshot-dir data\external\clingen_erepo_2026-10-26
+```
+
+İndirme klasörü doluysa üzerine yazılmaz. Sayfaların ve kullanım şartlarının
+hash'leri saklanır; UUID tekilliği ve indirme öncesi/sonrası toplam sayılar
+karşılaştırılır. Bu, canlı API'nin indirildiği anda sabitlenmiş yerel kopyasıdır;
+sağlayıcının resmî sürümlü veri arşivi değildir.
+
+Tarama `reports/generated/clingen_erepo_screen/` altında tüm etiket sayılarını,
+çelişen yorumları ve eski VariationID ile eşleşmeyen adayları yazar. Hastalık,
+uzman paneli ve yorum sürümleri korunur. `Likely` etiketleri kesin ikili hedefe
+katılmaz. Eşleşmeyen kimlikler, allel/koordinat ve etiket-kökeni denetimleri
+tamamlanana kadar yalnızca aday üst sınırıdır. Bu aşamada model yüklenmez.
+
+26 Ekim 2026 taramasında 13.564 yorum kaydından, tek ClinVar kimliği bulunan
+4.610 kesin ikili varyant belirlendi. Eski veriyle 4.321 kimlik çakışması ve 7
+uyuşmayan sınıflandırma çıkarılınca 282 aday (216 Pathogenic, 66 Benign) kaldı.
+Bunların 180'i missense olarak ayrışır. Henüz allel/koordinat kabulü yapılmadı.
+Deneyin sabitlenmiş özeti: `docs/clingen_erepo_screen_result.md`.
 
 ### OOF olasılık kalibrasyonu
 

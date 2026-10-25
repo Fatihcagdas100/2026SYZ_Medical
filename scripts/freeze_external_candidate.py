@@ -87,6 +87,9 @@ def freeze_external_candidate(
     feature_profile: str = DEFAULT_FEATURE_PROFILE,
 ) -> dict[str, object]:
     """Train ve validation üzerinde tek adımda yeniden eğit; test satırı alma."""
+    for directory in (report_dir, artifact_dir):
+        if directory.exists() and any(directory.iterdir()):
+            raise FileExistsError(f"Dondurulmuş adayın üzerine yazılamaz: {directory}")
     if not 0 < threshold < 1:
         raise ValueError("Eşik 0 ile 1 arasında olmalıdır.")
     if feature_profile not in FEATURE_PROFILES:
