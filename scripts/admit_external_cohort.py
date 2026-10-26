@@ -53,6 +53,7 @@ def load_development_index(path: Path, reference: ReferenceGenome):
     coordinates: set[tuple[str, str, str, str]] = set()
     genes: set[str] = set()
     unnormalizable = 0
+    normalization_exclusions: Counter[str] = Counter()
     with gzip.open(path, "rt", encoding="utf-8", newline="") as handle:
         reader = csv.DictReader(handle, delimiter="\t")
         if reader.fieldnames is None:
@@ -71,10 +72,11 @@ def load_development_index(path: Path, reference: ReferenceGenome):
             try:
                 coordinates.add(reference.normalize(row))
             except InvalidVariant as error:
-                if str(error) not in {"unsupported_or_missing_alleles", "invalid_position", "coordinate_out_of_range"}:
+                if str(error) not in {"unsupported_or_missing_alleles", "invalid_position", "coordinate_out_of_range", "nonprimary_or_unmapped_reference_accession"}:
                     raise ValueError(f"Geliştirme referans kontrolü başarısız: {variation_id}: {error}") from error
                 unnormalizable += 1
-    return identifiers, allele_ids, coordinates, genes, unnormalizable
+                normalization_exclusions[str(error)] += 1
+    return identifiers, allele_ids, coordinates, genes, unnormalizable, normalization_exclusions
 
 
 def admit_external_cohort(
@@ -101,8 +103,8 @@ def _admit_external_cohort(
     report_dir: Path, *, cohort_kind: str, source_version: str,
     source_url: str, reference: ReferenceGenome,
 ) -> dict[str, object]:
-    if cohort_kind not in {"independent", "temporal_clinvar"}:
-        raise ValueError("cohort_kind independent veya temporal_clinvar olmalıdır.")
+    if cohort_kind not in {"independent", "temporal_clinvar", "expert_curated_supplementary"}:
+        raise ValueError("Geçersiz kohort türü.")
     if not source_version.strip() or not source_url.strip():
         raise ValueError("Dış kohort sürümü ve kaynak adresi zorunludur.")
     for path in (development_path, external_path):
@@ -110,7 +112,7 @@ def _admit_external_cohort(
             raise FileNotFoundError(f"Girdi bulunamadı: {path}")
     if output_path.resolve() in {development_path.resolve(), external_path.resolve()}:
         raise ValueError("Kabul çıktısı girdi dosyasının üzerine yazılamaz.")
-    development_ids, development_alleles, development_coordinates, development_genes, unnormalizable = load_development_index(development_path, reference)
+    development_ids, development_alleles, development_coordinates, development_genes, unnormalizable, normalization_exclusions = load_development_index(development_path, reference)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     report_dir.mkdir(parents=True, exist_ok=True)
     temporary_handle = tempfile.NamedTemporaryFile(
@@ -207,6 +209,7 @@ def _admit_external_cohort(
         "schema_version": 2,
         "reference": reference.metadata,
         "cohort_kind": cohort_kind,
+        "source_independence_verified": False,
         "source_metadata": {"version": source_version, "url": source_url},
         "inputs": {
             "development": {"path": str(development_path.resolve()), "sha256": sha256_file(development_path)},
@@ -214,6 +217,7 @@ def _admit_external_cohort(
         },
         "output": {"path": str(output_path.resolve()), "sha256": sha256_file(output_path)},
         "counts": {**dict(counters), "benign": targets["0"], "pathogenic": targets["1"], "external_gene_symbols_reported": len(external_genes), "development_rows_without_normalizable_coordinates": unnormalizable},
+        "development_coordinate_exclusions_by_reason": dict(normalization_exclusions),
         "overlap_policy": {
             "keys": ["VariationID", "#AlleleID", "GRCh38_coordinate_reference_alternate"],
             "missing_coordinate_allele_rows": "excluded",
@@ -241,7 +245,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--external", type=Path, default=DEFAULT_EXTERNAL)
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
     parser.add_argument("--report-dir", type=Path, default=DEFAULT_REPORT_DIR)
-    parser.add_argument("--cohort-kind", choices=("independent", "temporal_clinvar"), required=True)
+    parser.add_argument("--cohort-kind", choices=("independent", "temporal_clinvar", "expert_curated_supplementary"), required=True)
     parser.add_argument("--source-version", required=True)
     parser.add_argument("--source-url", required=True)
     parser.add_argument("--reference-config", type=Path, required=True)

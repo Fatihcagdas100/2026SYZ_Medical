@@ -18,10 +18,14 @@ patojenik/benign sınıflandırılması üzerine yürütülen çalışma.
   varyant-düzeyi deneylerde train veya validation rolünde bulunduğunu gösterdi.
   Bu nedenle sonuç tamamen süreçten bağımsız nihai test değil, **iç
   gene-disjoint değerlendirme** olarak raporlanır.
-- Sonraki doğrulama adımı geliştirme sürecinde hiç kullanılmamış bağımsız bir
-  dış veri kaynağıdır. `HGVS + missense` dış doğrulama adayı yalnızca train ve
-  validation ile donduruldu; dış kohort henüz değerlendirilmedi. Model klinik
-  kullanıma hazır değildir.
+- `HGVS + missense` aday modeli train+validation ile donduruldu ve 264 varyantlık
+  ClinGen ek kohortunda bir kez ölçüldü: ROC-AUC `0.7932`, missense ROC-AUC
+  `0.6642`; sabit `0.50` eşikte duyarlılık `%59,60`, özgüllük `%81,82` oldu.
+  198 Pathogenic varyantın 80'i kaçırıldı. Kaynak bağımsızlığı doğrulanmadığı
+  için bu sonuç **uzman-kürasyonlu ek değerlendirme** olarak raporlanır.
+- Modelin bu kohortta özellikle missense duyarlılığı sınırlı kaldı. Sonraki
+  geliştirmeleri doğrulamak için yeni ve kullanılmamış kohort gerekir. Model
+  klinik kullanıma hazır değildir.
 
 ## Python ortamı
 
@@ -522,7 +526,7 @@ Dış ham kohort, önce geliştirme verisinden çakışmasız hâle getirilmelid
   --cohort-kind independent `
   --source-version "sağlayıcının-sürümü" `
   --source-url "https://kaynak.example.org" `
-  --reference-config data\reference\grch38.json
+  --reference-config data\reference\ucsc_hg38_initial\grch38_with_aliases.json
 ```
 
 Bu adım `Assembly=GRCh38`, referans alleli, `VariationID`, `AlleleID` ve referans
@@ -584,8 +588,76 @@ tamamlanana kadar yalnızca aday üst sınırıdır. Bu aşamada model yüklenme
 26 Ekim 2026 taramasında 13.564 yorum kaydından, tek ClinVar kimliği bulunan
 4.610 kesin ikili varyant belirlendi. Eski veriyle 4.321 kimlik çakışması ve 7
 uyuşmayan sınıflandırma çıkarılınca 282 aday (216 Pathogenic, 66 Benign) kaldı.
-Bunların 180'i missense olarak ayrışır. Henüz allel/koordinat kabulü yapılmadı.
-Deneyin sabitlenmiş özeti: `docs/clingen_erepo_screen_result.md`.
+Bunların 180'i ilk eRepo başlığına göre missense olarak ayrışır.
+İlk taramanın özeti: `docs/clingen_erepo_screen_result.md`.
+
+### ClinGen adaylarının GRCh38 allel kabulü
+
+Referansı sağlayıcı MD5 değeriyle indirip FASTA/FAI ve accession eşlemesini
+sabitlemek için:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\prepare_grch38_reference.py
+```
+
+Betik UCSC initial hg38 sürümünü kullanır. Yaklaşık 1 GB sıkıştırılmış dosya ve
+3 GB'ın üzerinde FASTA `data/reference/` altında tutulur. Oluşturulan
+`grch38_with_aliases.json`, ana kromozomların NC_ erişim numaralarını doğrular;
+alternatif dizinin koordinatı ana kromozom koordinatı gibi yorumlanmaz.
+
+Adayların eski ClinVar kayıtları ve ClinGen Allele Registry ile eşlenmesi:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\map_clingen_candidates.py
+.\.venv\Scripts\python.exe scripts\resolve_clingen_alleles.py `
+  --output data\external\clingen_resolved_candidates_v2.tsv.gz `
+  --report-dir reports\generated\clingen_allele_resolution_v2
+.\.venv\Scripts\python.exe scripts\admit_external_cohort.py `
+  --external data\external\clingen_resolved_candidates_v2.tsv.gz `
+  --output data\external\clingen_reference_checked.tsv.gz `
+  --report-dir reports\generated\clingen_reference_admission `
+  --cohort-kind expert_curated_supplementary `
+  --source-version "eRepo retrieval snapshot 2026-10-26; Registry cached responses" `
+  --source-url "https://erepo.clinicalgenome.org/evrepo/" `
+  --reference-config data\reference\ucsc_hg38_initial\grch38_with_aliases.json
+```
+
+Mevcut eşleme çıktıları korunur; ilk iki komutu yeniden çalıştırmak için farklı
+`--output` ve `--report-dir` konumları verilmelidir. Registry yanıtları hash'li
+yerel önbellekten tekrar kullanılabilir.
+
+26 Ekim 2026 koşusunda **264 varyant** teknik kabulden geçti: 198 Pathogenic,
+66 Benign. AlleleID ve normalleştirilebilen koordinatlarda eski veriyle ek
+çakışma bulunmadı. Son Name anotasyonunda 187 missense vardır. Bütün genler eski
+veride görüldüğü için kohort `expert_curated_supplementary` kapsamındadır;
+kaynak bağımsızlığı doğrulanmış değildir. Sonuç:
+`docs/clingen_grch38_admission_result.md`.
+
+Puanlama öncesi özellik tablosu:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\build_external_features.py `
+  --input data\external\clingen_reference_checked.tsv.gz `
+  --output data\external\clingen_missense_features.tsv.gz `
+  --report-dir reports\generated\clingen_external_features
+```
+
+### ClinGen ek kohortunda dondurulmuş model sonucu
+
+`config/clingen_supplementary_evaluation.json` dosyasındaki sabit ayarlarla tek
+ölçüm tamamlandı. Sonuçlar `reports/generated/clingen_supplementary_evaluation/`
+altında saklanır. Değerlendirme yeniden çalıştırılmamalıdır.
+
+| Grup | n | ROC-AUC (%95 GA) | AP | Duyarlılık | Özgüllük |
+| --- | ---: | --- | ---: | ---: | ---: |
+| Tüm kohort | 264 | 0.7932 (0.7357–0.8548) | 0.9111 | 0.5960 | 0.8182 |
+| Missense | 187 | 0.6642 (0.5773–0.7546) | 0.8754 | 0.5135 | 0.7436 |
+
+Genel yanlış negatif sayısı 80'dir; bunların 72'si missense grubundadır.
+AP'nin yorumunda Pathogenic oranının genel kohortta `%75`, missense'de `%79,14`
+olduğu dikkate alınmalıdır. Bütün genler eski veride görülmüştür; kaynak
+bağımsızlığı doğrulanmamıştır. Model veya eşik sonuçtan sonra değiştirilmedi.
+Ayrıntılı sonuç: `docs/clingen_supplementary_evaluation_result.md`.
 
 ### OOF olasılık kalibrasyonu
 

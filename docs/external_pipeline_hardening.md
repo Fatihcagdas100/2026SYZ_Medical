@@ -36,8 +36,9 @@ yeni performans ölçümü yapılmadı.
 
 ## Gerçek değerlendirme öncesinde gereken girdiler
 
-Gerçek GRCh38 FASTA/FAI ve sabitlenmiş hash config'i henüz yerelde hazır değildir.
-Bağımsızlığı/kullanım koşulları incelenmiş ve sürümü sabitlenmiş dış kohort da
-henüz kabul edilmemiştir. Bu iki girdi sağlanınca aynı hat gerçek veriyle
-çalıştırılabilir. Normalizasyon küçük iki allelli A/C/G/T varyantları kapsar;
+GRCh38 FASTA/FAI ve accession denetimli hash config'i 26 Ekim 2026'da hazırlandı.
+ClinGen'den 264 varyant uzman-kürasyonlu ek değerlendirme kapsamında teknik
+kabulden geçti; sonuç `docs/clingen_grch38_admission_result.md` içindedir.
+Kaynak-bağımsız klinik kohort henüz doğrulanmadı.
+Normalizasyon küçük iki allelli A/C/G/T varyantları kapsar;
 sembolik varyantlar, liftover ve karmaşık haplotip çözümü kapsam dışıdır.

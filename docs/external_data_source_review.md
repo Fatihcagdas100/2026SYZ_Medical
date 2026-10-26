@@ -12,10 +12,12 @@ performans raporlanmaz.
 
 Ön incelemenin ardından ClinGen eRepo anlık görüntüsü indirilip VariationID
 çakışması tarandı. 282 kimliği eşleşmeyen aday kaldı; allel/koordinat ve
-etiket kökeni denetlenmediğinden gerçek çakışmasız sayı henüz bilinmiyor.
-Sonuçlar `docs/clingen_erepo_screen_result.md` dosyasındadır. Aday modelde dış
-metrik hesaplanmadı. Aşağıdaki kaynak uygunluğu yorumları dokümantasyondan
-yaptığımız çıkarımlardır.
+referans denetiminin ardından 264 kayıt uzman-kürasyonlu ek kohort olarak teknik
+kabul aldı. Kaynak bağımsızlığı doğrulanmadı.
+Kabul sonucu `docs/clingen_grch38_admission_result.md` dosyasındadır. Sonraki tek
+ölçümde genel ROC-AUC `0.7932`, missense ROC-AUC `0.6642` bulundu; ayrıntılar
+`docs/clingen_supplementary_evaluation_result.md` dosyasındadır. Aşağıdaki kaynak
+uygunluğu yorumları dokümantasyondan yaptığımız çıkarımlardır.
 
 ## Kaynak karşılaştırması
 

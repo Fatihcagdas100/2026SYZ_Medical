@@ -54,6 +54,12 @@ class ReferenceGenome:
             "assembly": "GRCh38", "config_sha256": sha256_file(config_path),
             "fasta_sha256": config["fasta_sha256"], "fai_sha256": config["fai_sha256"],
         }
+        self.primary_accessions = config.get("primary_accession_to_chromosome", {})
+        if self.primary_accessions:
+            alias_path = config_path.parent / config["chrom_alias_file"]
+            if sha256_file(alias_path) != config.get("chrom_alias_sha256"):
+                raise ValueError("Referans chromAlias hash uyuşmazlığı.")
+            self.metadata["chrom_alias_sha256"] = config["chrom_alias_sha256"]
         self.handle = fasta.open("rb")
 
     def __enter__(self):
@@ -89,6 +95,15 @@ class ReferenceGenome:
         alternate = row.get("AlternateAlleleVCF", "").strip().upper()
         if not reference or not alternate or set(reference + alternate) - set("ACGT") or reference == alternate:
             raise InvalidVariant("unsupported_or_missing_alleles")
+        if position < 1:
+            raise InvalidVariant("invalid_position")
+        accession = row.get("ChromosomeAccession", "").strip()
+        if accession and accession not in {"-", "na"}:
+            expected_chromosome = self.primary_accessions.get(accession)
+            if expected_chromosome is None:
+                raise InvalidVariant("nonprimary_or_unmapped_reference_accession")
+            if expected_chromosome != chromosome:
+                raise InvalidVariant("accession_chromosome_mismatch")
         if self.fetch(chromosome, position, len(reference)) != reference:
             raise InvalidVariant("reference_allele_mismatch")
         # Ortak son eki kaldır; bir allel boşalacaksa önce soldan referansla uzat.

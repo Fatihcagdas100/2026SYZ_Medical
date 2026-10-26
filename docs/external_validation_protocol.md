@@ -63,7 +63,11 @@ Yollar config dosyasının konumuna göre çözülür:
 FASTA sıkıştırılmamış, FAI indeksi bu FASTA ile uyumlu olmalıdır. Hash eşleşmesi,
 seçilen dosyanın değişmediğini doğrular; assembly'nin kaynağı ve sürümü indirme
 kaydından ayrıca doğrulanır. Config'e `GRCh38` yazmak tek başına dosyanın GRCh38
-olduğunu kanıtlamaz. Referans henüz bu repository'ye indirilmedi.
+olduğunu kanıtlamaz. Referans 26 Ekim 2026'da UCSC initial hg38 kaynağından
+indirilip sağlayıcı MD5 kontrolünden geçirildi. Hazırlama betiği
+`scripts/prepare_grch38_reference.py` dosyasındadır. `ChromosomeAccession`
+alanını denetlemek için üretilen
+`data/reference/ucsc_hg38_initial/grch38_with_aliases.json` kullanılmalıdır.
 
 Her iki kaynaktaki `Assembly` sütunu gereklidir. Kabul algoritması A/C/G/T içeren
 iki allelli varyantlarda referans alleli denetler; ortak son/ön ekleri kaldırır ve

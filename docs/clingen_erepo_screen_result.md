@@ -2,6 +2,10 @@
 
 Tarih: 26 Ekim 2026 (Europe/Istanbul)
 
+Sonraki aşama tamamlandı: GRCh38 referans ve allel denetimi sonrası 264 kayıt
+teknik kabul aldı. Güncel sonuç `docs/clingen_grch38_admission_result.md`
+dosyasındadır. Bu belge ilk kimlik taramasının tarihsel kaydıdır.
+
 ## Sonuç
 
 Eski 367.196 varyantın VariationID kümesine karşı yapılan taramada **282 aday**

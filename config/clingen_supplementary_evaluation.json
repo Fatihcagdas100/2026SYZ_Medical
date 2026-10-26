@@ -1,0 +1,37 @@
+{
+  "protocol_version": "1.0",
+  "cohort_kind": "expert_curated_supplementary",
+  "source_independence_verified": false,
+  "candidate_manifest": "reports/generated/external_candidate/manifest.json",
+  "artifact_sha256": "315b8a19986dcb0e20c010066c24f0baae62255d042828aefcc1fd78905139f7",
+  "feature_profile": "hgvs_missense",
+  "frozen_threshold": 0.5,
+  "features": "data/external/clingen_missense_features.tsv.gz",
+  "features_sha256": "a971ad3819e46bec396735211230e398f9dce3c1d1e324b7a0d014b2232a4683",
+  "admission_manifest": "reports/generated/clingen_reference_admission/manifest.json",
+  "feature_manifest": "reports/generated/clingen_external_features/manifest.json",
+  "report_dir": "reports/generated/clingen_supplementary_evaluation",
+  "expected_cohort": {
+    "all_rows": 264,
+    "pathogenic": 198,
+    "benign": 66,
+    "missense_rows": 187,
+    "unseen_gene_rows": 0
+  },
+  "bootstrap_replicates": 1000,
+  "seed": 2027,
+  "bootstrap_method": "class_stratified_row_percentile",
+  "metrics": ["roc_auc", "average_precision", "precision", "recall_sensitivity", "specificity", "f1"],
+  "subgroups": ["all_variants", "missense", "unseen_genes"],
+  "evaluation_policy": {
+    "maximum_evaluations": 1,
+    "refit_or_threshold_tuning": false,
+    "internal_test_used": false,
+    "interpretation": "descriptive_supplementary_evaluation_no_predefined_pass_fail_gates"
+  },
+  "limitations": [
+    "All genes were previously seen; this cohort does not measure unseen-gene generalization.",
+    "Class-stratified row bootstrap intervals do not model within-gene dependence.",
+    "ClinGen and ClinVar provenance is related; this is not confirmed source-independent validation."
+  ]
+}
