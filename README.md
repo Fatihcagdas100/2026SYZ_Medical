@@ -683,6 +683,28 @@ Sonuç özeti: `docs/clingen_error_analysis_result.md`. Ayrıntılı yerel çık
 `reports/generated/clingen_error_analysis/` altındadır. Model ve eşik korunur;
 bu görülmüş kohort yeni modeller için bağımsız doğrulama olarak kullanılamaz.
 
+### Splice ve protein bağlamı anotasyon pilotu
+
+Ekzon sınırına uzaklık, transkript sonucu ve protein bölgesi bilgisini küçük bir
+örneklemde incelemek için:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\pilot_context_annotations.py --fetch
+```
+
+Sonraki çalıştırmada `--fetch` kaldırılırsa yalnızca hash denetimli yerel API
+yanıtları kullanılır. Betik altı HGVS tabakasından ikişer train SNV'si ve daha önce
+incelenen üç ClinGen örneğini ayrı tablolara yazar. Etiketleri okumaz; sabit GRCh38
+referansını, VEP koordinat/allelini ve transkript sürümünü doğrular. Ensembl veri
+sürümü `116` olarak kilitlidir. ClinVar/klinik etiketler ve diğer araçların
+patojenite skorları özellik tablosuna alınmaz.
+
+Özellik sütunları, kaynak koşulları ve sınırlar:
+[docs/context_annotation_pilot.md](docs/context_annotation_pilot.md).
+Yerel çıktılar `reports/generated/context_annotation_pilot/` altındadır.
+Bu pilot model başarısını ölçmez; yeni model için geliştirme deneyi ve
+kullanılmamış değerlendirme verisi gerekir.
+
 ### OOF olasılık kalibrasyonu
 
 Gene-disjoint çapraz doğrulamadaki olasılıkların güvenilirliğini incelemek için:

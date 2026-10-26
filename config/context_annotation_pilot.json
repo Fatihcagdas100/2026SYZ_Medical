@@ -1,0 +1,21 @@
+{
+  "ensembl_release": 116,
+  "seed": 2027,
+  "per_stratum": 2,
+  "strata": ["missense", "synonymous", "stop_gained_or_changed", "donor_core_1_2", "acceptor_core_1_2", "deep_intronic"],
+  "diagnostic_ids": ["38682", "569548", "190351"],
+  "inputs": {
+    "variants": {"path": "data/processed/clinvar_grch38_germline_exact_binary.tsv.gz", "sha256": "4d018115be5a7ad710e86fb653630a87a2d9489ad29a59d8cc38b3d9d46341c1"},
+    "features": {"path": "data/processed/clinvar_missense_features.tsv.gz", "sha256": "516a2fce4b188a9226c7bd5b54236c6aed08480787107f97741a3147acc9d162"},
+    "split": {"path": "data/processed/baseline_gene_disjoint_split.tsv", "sha256": "7c115e25dd1c7edc1bc566ad12c14e829aa02252741dda8d080f4ac3cc796aa7"},
+    "diagnostics": {"path": "data/external/clingen_reference_checked.tsv.gz", "sha256": "fea76fa8c6107b8d20e95b50d22a68aaac45cb84b16686018b31e04d7cd897e6"}
+  },
+  "protected": [
+    {"path": "artifacts/external_candidate/hgvs_missense_development_refit.joblib", "sha256": "315b8a19986dcb0e20c010066c24f0baae62255d042828aefcc1fd78905139f7"},
+    {"path": "reports/generated/clingen_supplementary_evaluation/manifest.json", "sha256": "d4c72dce69278d1343d74158ca8e8dfe08fc2b71f11e7b02ce824c60825feccd"},
+    {"path": "reports/generated/clingen_supplementary_evaluation/external_predictions.tsv.gz", "sha256": "291c244b4a198e400ab87030a0e4bbb7381ea2cfd15c0a2ef5c1da619da6bafb"}
+  ],
+  "reference_config": "data/reference/ucsc_hg38_initial/grch38_with_aliases.json",
+  "cache": "data/external/ensembl_context_pilot_2026-10-26",
+  "output": "reports/generated/context_annotation_pilot"
+}
