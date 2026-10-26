@@ -4,11 +4,12 @@ from pathlib import Path
 import tempfile
 import unittest
 from unittest.mock import patch
+from urllib.error import HTTPError
 
 import pandas as pd
 
 from scripts.pilot_context_annotations import (
-    CachedRest, FEATURE_COLUMNS, RAW_COLUMNS, annotate, extract_features, run, select_training_rows,
+    AnnotationRequestFailure, CachedRest, FEATURE_COLUMNS, RAW_COLUMNS, annotate, extract_features, run, select_training_rows,
     select_transcript, splice_geometry, validate_vep,
 )
 
@@ -92,6 +93,20 @@ class ContextAnnotationPilotTest(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "Corrupt cache"):
                 client.get("/info/data")
             network.assert_not_called()
+
+    def test_service_failures_are_recorded_and_replayed_without_network(self):
+        with tempfile.TemporaryDirectory() as directory, \
+                patch("scripts.pilot_context_annotations.time.sleep"), \
+                patch("scripts.pilot_context_annotations.urlopen", side_effect=HTTPError("url", 500, "server error", {}, None)) as network:
+            client = CachedRest(directory, fetch=True)
+            with self.assertRaises(AnnotationRequestFailure):
+                client.get("/vep/human/region/1:109-109:1/G")
+            self.assertEqual(network.call_count, 3)
+            offline = CachedRest(directory)
+            with self.assertRaises(AnnotationRequestFailure):
+                offline.get("/vep/human/region/1:109-109:1/G")
+            self.assertEqual(network.call_count, 3)
+            self.assertEqual(offline.used[0]["attempts"][0]["http_status"], 500)
 
     def test_annotation_checks_transcript_version_and_keeps_selection_in_audit(self):
         class Reference:
@@ -199,6 +214,27 @@ class ContextAnnotationPilotTest(unittest.TestCase):
                     patch.object(Client, "get", upgraded_service), patch("builtins.print"):
                 with self.assertRaisesRegex(ValueError, "Live release differs"):
                     run(path, fetch=True)
+
+            class DiagnosticFailure(Client):
+                def __init__(self, directory, fetch):
+                    self.vep_calls = 0
+
+                def get(self, endpoint, params=None, tag=""):
+                    if endpoint.startswith("/vep"):
+                        self.vep_calls += 1
+                        if self.vep_calls == 2:
+                            raise AnnotationRequestFailure("HTTP 500")
+                    return super().get(endpoint, params, tag)
+
+            with patch("scripts.pilot_context_annotations.ROOT", root), \
+                    patch("scripts.pilot_context_annotations.ReferenceGenome", Reference), \
+                    patch("scripts.pilot_context_annotations.CachedRest", DiagnosticFailure), \
+                    patch("builtins.print"):
+                partial = run(path)
+            self.assertEqual(partial["attempted_counts"]["seen_clingen_diagnostic"], 1)
+            self.assertEqual(partial["failures"][0]["VariationID"], "3")
+            self.assertNotIn("seen_clingen_diagnostic", partial["coverage"])
+            self.assertEqual(len(pd.read_csv(root / "output/annotation_failures.tsv", sep="\t")), 1)
 
 
 if __name__ == "__main__":

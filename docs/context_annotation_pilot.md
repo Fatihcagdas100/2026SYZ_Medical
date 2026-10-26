@@ -91,8 +91,72 @@ yerel VEP/cache/FASTA sürümleri ve tüm dış kaynaklar ayrıca kilitlenmelidi
 - `annotation_audit.tsv`: 12 eğitim ve 3 önceden görülmüş örneğin seçimi ve anotasyon ayrıntıları.
 - `train_candidate_features.tsv`: yalnızca eğitim örnekleri için izin verilen biyolojik sütunlar.
 - `seen_diagnostic_features.tsv`: önceden görülmüş üç örneğin ayrı özellik tablosu.
+- `annotation_failures.tsv`: yeniden denemelerden sonra anotasyon alınamayan kayıtlar; başarı paydasından gizlenmez. Korunmuş hata makbuzları ağsız modda da yeniden okunur.
 - `manifest.json`: giriş/çıktı hash'leri, referans ve servis sürümleri, yanıt makbuzları ve kapsam sayıları.
+- `fetch_manifest.json`, `replay_manifest.json`: son canlı sürüm denetimli erişim ve son ağsız yeniden üretim kayıtları ayrı saklanır.
 
 Dondurulmuş model, ClinGen ölçüm manifesti ve kaydedilmiş tahmin dosyasının
 hash'leri başlangıçta ve sonda doğrulanır. Model yükleme, tahmin üretme, eşik
 arama veya metrik yeniden hesaplama yapılmaz.
+
+## 26 Ekim 2026 pilot sonucu
+
+**15/15 varyant başarıyla anotasyonlandı:** 12 train ve 3 önceden görülmüş tanısal
+örnek. BLNK `1220868` ilk indirmede üç denemede de HTTP 500 yanıtı verdi;
+önbellekten devam eden sonraki koşuda aynı varyant ve aynı parametrelerle
+anotasyon alındı. Örnek değiştirilmedi. Tamamlanan koşunun hata tablosu boştur.
+
+| Kontrol / anotasyon | Train örnekleri | Önceden görülmüş örnekler |
+| --- | ---: | ---: |
+| Denenen / tamamlanan | 12 / 12 | 3 / 3 |
+| Kaynak gen sembolü eşleşen | 12 / 12 | 3 / 3 |
+| MANE Select seçilen | 12 / 12 | 3 / 3 |
+| Gerçek splice birleşimi uzaklığı hesaplanan | 12 / 12 | 3 / 3 |
+| Protein göreli konumu bulunan | 6 / 12 | 3 / 3 |
+| Pfam örtüşme anotasyonu bulunan | 2 / 12 | 3 / 3 |
+| Yanıtta doğrudan `InterPro` kaydı bulunan | 0 / 12 | 0 / 3 |
+| Transkriptler arasında birden fazla sonuç kümesi bulunan | 10 / 12 | 3 / 3 |
+
+Protein konumu bulunmayan altı train örneği introniktir. InterPro sütunu bu
+örneklemde bilgi taşımadı; VEP yanıtında bu isimle kayıt bulunmaması InterPro'da
+biyolojik anotasyon olmadığı anlamına gelmez. Pfam kapsamı da tüm varyantlara
+genellenemez. Alternatif transkriptlerin farklı sonuç vermesi, seçim politikasını
+ve ham yanıtların korunmasını gerekli kılar.
+
+Üç tanısal örnekte gözlenen bağlam:
+
+| Varyant | Seçilen transkript | VEP sonucu | Splice / protein bağlamı |
+| --- | --- | --- | --- |
+| HBB `38682` | ENST00000335295.4 | synonymous + splice-region | Ekzon 1/3; gerçek donor sınırına ekzon içinden 2 baz uzaklık. |
+| ACADVL `569548` | ENST00000356839.10 | synonymous + splice-region | Ekzon 12/20; donor sınırındaki son ekzon bazı, uzaklık 0. |
+| GFAP `190351` | ENST00000588735.3 | stop-gained | Ekzon 6/9; göreli protein konumu yaklaşık 0.722. Bu bilgi tek başına hastalığın fonksiyon kaybı/kazanımı mekanizmasını veya uzman Benign yorumunu açıklamaz. |
+
+HBB ve ACADVL için önceki kaba `synonymous` gösterimin ötesinde ölçülebilir
+bağlam elde edildi. Bunun duyarlılığı artırdığı henüz gösterilmedi; model
+yeniden eğitilmedi ve bu örnekler yeni doğrulama sayılmadı. SpliceAI skoru,
+deneysel RNA sonucu, NMD veya hastalık mekanizması bu pilotun çıktısı değildir.
+
+REST API sürümü `15.12`, Ensembl yazılım/veri sürümü `116` olarak kaydedildi.
+Gerçek önbellek üzerinde ağ çağrıları hata verecek şekilde engellenerek yeniden
+üretim çalıştırıldı: dört TSV dosyasının SHA256 değeri canlı erişim koşusuyla
+birebir aynı kaldı. Dondurulmuş model ve birincil ClinGen sonuç hash'leri korundu.
+Yeni betiğin **9 testi** geçti; örnekleme, iki strand üzerindeki uzaklıklar,
+etiket/skor dışlama, koordinat ve transkript sürümü reddi, hata makbuzu,
+bağımsız hata tablosu ve sürüm yükselmesinde durma kontrol edildi.
+
+### Bu koşunun bütünlük kaydı
+
+| Dosya | SHA256 |
+| --- | --- |
+| `fetch_manifest.json` | `bc005a1976201fe6979144d08e5aa8aba91d0d3af6359d3eace4d6a5edc65bcb` |
+| `replay_manifest.json` | `81d9a3819bd435091e4a6715666224e4af2bc7617bcd8eaae22706d6ee9ac5a6` |
+| `train_candidate_features.tsv` | `699fea68a4912b1ad4563775b550f4f6027382b47ff2f39d8b0ccdc0c3a2890b` |
+| `seen_diagnostic_features.tsv` | `4fc57480a2509e073434e00eb39f9410206dfa28a8c22626d95a42dd249b8791` |
+| `annotation_audit.tsv` | `01374805596399ed1d6ae81266f61171b5593bf300da04bc0d95f09cbf7db297` |
+
+Sonraki işlem, REST pilotunu büyük veri için yerel ve sürümü sabit bir VEP
+işlem hattına taşımaya hazırlanmaktır. Öncelik splice sınır geometrisi ve
+transkript/protein bağlamıdır; sürekli sıfır kalan InterPro sütunu bir gelişme
+iddiasını desteklemez. Ardından train-only gene-disjoint geliştirme deneyinde
+mevcut özellikle yeni bağlamlı gösterim karşılaştırılabilir. Bir sonraki modelin
+dış başarısı için mevcut ClinGen kohortundan ayrı, kullanılmamış veri gerekir.

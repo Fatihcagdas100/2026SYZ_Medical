@@ -26,6 +26,15 @@ patojenik/benign sınıflandırılması üzerine yürütülen çalışma.
 - Modelin bu kohortta özellikle missense duyarlılığı sınırlı kaldı. Sonraki
   geliştirmeleri doğrulamak için yeni ve kullanılmamış kohort gerekir. Model
   klinik kullanıma hazır değildir.
+- Splice/protein bağlamı pilotunda 12 train SNV'si ve önceden görülmüş 3 örnek
+  Ensembl VEP ile anotasyonlandı. HBB/ACADVL synonymous örneklerinde ek splice
+  bağlamı görüldü; yeni model eğitilmedi. Ayrıntılar:
+  [anotasyon pilotu sonucu](docs/context_annotation_pilot.md).
+- Yerel VEP 116.1 için 169.265 train SNV'si 170 etiketsiz VCF parçasına hazırlandı.
+  Tam cache kurulumu yerine mevcut diske sığan GTF yolu kuruldu. 15 örnekte
+  dokuz özellik ve transkript seçimi REST pilotuyla eşleşti; ilk 1.000 train
+  varyantı anotasyonlandı. Kalan 168.265 SNV bekliyor:
+  [GTF yolu ve gerçek sonuçlar](docs/gtf_context_route.md).
 
 ## Python ortamı
 
@@ -702,8 +711,52 @@ patojenite skorları özellik tablosuna alınmaz.
 Özellik sütunları, kaynak koşulları ve sınırlar:
 [docs/context_annotation_pilot.md](docs/context_annotation_pilot.md).
 Yerel çıktılar `reports/generated/context_annotation_pilot/` altındadır.
+Pilot 15/15 kayıtta tamamlandı; 12 train kaydında MANE ve splice uzaklığı,
+6'sında protein konumu, 2'sinde Pfam örtüşmesi bulundu. Doğrudan InterPro kaydı
+alınmadı. Ağsız yeniden üretimde dört TSV'nin hash'i aynı kaldı; 9 yeni test geçti.
 Bu pilot model başarısını ölçmez; yeni model için geliştirme deneyi ve
 kullanılmamış değerlendirme verisi gerekir.
+
+### Yerel VEP ile parçalı çalışma hazırlığı
+
+```powershell
+.\.venv\Scripts\python.exe scripts\local_vep_pipeline.py prepare
+.\.venv\Scripts\python.exe scripts\local_vep_pipeline.py check
+```
+
+İlk komut yalnızca train bölümünü kullanır; 169.265 referans-doğrulanmış birincil
+kromozom SNV'sini 170 VCF'ye böler. 87.770 kapsam dışı kayıt nedenleriyle ayrı
+tutulur. Etiketler yüklenmez. İkinci komut Docker, sabit VEP imajı, cache ve disk
+durumunu raporlar; hazır değilse çıkış kodu 2 döndürür.
+
+VEP `116.1` imajı indirildi ve ağ kapalıyken kontrol edildi. GRCh38 cache arşivi
+27,64 GB; kurulum için planlanan arşiv/açma/çalışma bütçesi yaklaşık 63,88 GB.
+İmaj kurulumundan sonra yaklaşık 37,7 GB boş alan bulunduğu için cache indirmesi
+başlatılmadı. Bu bütçe tam cache yöntemine aittir. Mevcut diskte aşağıdaki GTF
+yoluyla anotasyon başlatıldı.
+
+Kurulum, kaynak kilidi, kesintiden devam komutları ve 10 testin kapsamı:
+[docs/local_vep_pipeline.md](docs/local_vep_pipeline.md).
+
+### Daha az diskle GTF tabanlı çevrimdışı anotasyon
+
+Ensembl 116 GTF, indeks ve transkript verisi yaklaşık 733 MB tuttu; mevcut
+FASTA ve VEP 116.1 imajı kullanıldı. İlk 1.000 train kaydı işlendi: 972 kayıtta
+splice uzaklığı, 496 kayıtta protein göreli konumu elde edildi. Bu ilk parça
+kromozom 1'in başlangıcıdır; kapsam oranları tüm veri setine genellenemez.
+Pfam/InterPro bu yolda bulunmaz ve özellik tablosuna alınmaz.
+
+```powershell
+.\.venv\Scripts\python.exe scripts\local_vep_pipeline.py check --config config\local_vep_gtf.json
+.\.venv\Scripts\python.exe scripts\local_vep_pipeline.py run --config config\local_vep_gtf.json --max-chunks 1
+.\.venv\Scripts\python.exe scripts\compare_gtf_context_pilot.py --completed-batches
+```
+
+`run --max-chunks 1` her çağrıda tamamlanmış parçaları doğrular ve en fazla bir
+yeni parça işler. İlk kurulum ve tüm devam komutları:
+[docs/gtf_context_route.md](docs/gtf_context_route.md).
+17 ilgili test geçti; ağsız yeniden üretimde özellik TSV hash'leri aynı kaldı.
+Model yeniden eğitilmedi; ClinGen ölçümü tekrarlanmadı.
 
 ### OOF olasılık kalibrasyonu
 

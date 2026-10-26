@@ -35,6 +35,10 @@ FEATURE_COLUMNS = ["biotype", "consequence_terms", "exon_rank", "exon_total",
 PARAMETERS = dict(domains=1, canonical=1, mane=1, numbers=1, protein=1, transcript_version=1)
 
 
+class AnnotationRequestFailure(RuntimeError):
+    """Public service failed after retries; not an annotated variant."""
+
+
 def read_columns(path, columns):
     # Do not load target/clinical significance columns into the pilot dataframe.
     return pd.read_csv(path, sep="\t", usecols=columns, dtype=str, keep_default_na=False)
@@ -89,10 +93,17 @@ class CachedRest:
         key = hashlib.sha256((url + "#" + tag).encode()).hexdigest()
         body = self.directory / f"{key}.json"
         receipt = self.directory / f"{key}.receipt.json"
+        failure = self.directory / f"{key}.failure.json"
         if body.exists() != receipt.exists():
             raise ValueError(f"Incomplete cache pair: {key}")
         if not body.exists():
             if not self.fetch:
+                if failure.exists():
+                    metadata = json.loads(failure.read_text(encoding="utf-8"))
+                    if metadata["url"] != url:
+                        raise ValueError("Failure receipt URL mismatch")
+                    self.used.append({"failure_receipt": failure.name, "sha256": sha256_file(failure), **metadata})
+                    raise AnnotationRequestFailure(metadata["attempts"][-1]["error"])
                 raise FileNotFoundError(f"No verified cache; use --fetch: {url}")
             for attempt in range(3):
                 try:
@@ -101,9 +112,15 @@ class CachedRest:
                         payload = response.read()
                     json.loads(payload)  # Reject non-JSON errors before storing.
                     break
-                except (OSError, ValueError):
+                except (OSError, ValueError) as error:
                     if attempt == 2:
-                        raise
+                        metadata = json.loads(failure.read_text(encoding="utf-8")) if failure.exists() else {"url": url, "attempts": []}
+                        metadata["attempts"].append({"retrieved_at_utc": datetime.now(timezone.utc).isoformat(),
+                                                    "error_type": type(error).__name__, "error": str(error),
+                                                    "http_status": getattr(error, "code", None), "retries": 3})
+                        failure.write_text(json.dumps(metadata, indent=2), encoding="utf-8")
+                        self.used.append({"failure_receipt": failure.name, "sha256": sha256_file(failure), **metadata})
+                        raise AnnotationRequestFailure(str(error)) from error
                     time.sleep(1 + attempt)
             body.write_bytes(payload)
             receipt.write_text(json.dumps({"url": url, "retrieved_at_utc": datetime.now(timezone.utc).isoformat(),
@@ -239,12 +256,17 @@ def run(config_path, fetch=False):
         raise ValueError("Live release differs from the original cache release")
     rest_info = client.get("/info/rest")
     software_info = client.get("/info/software")
-    audit_rows = []
+    audit_rows, failures = [], []
     with ReferenceGenome(ROOT / config["reference_config"]) as reference:
         reference_metadata = reference.metadata
         for row in rows:
             print(f"Annotating {row['VariationID']} ({row['role']}, {row['stratum']})", flush=True)
-            audit_rows.append(annotate(row, reference, client))
+            try:
+                audit_rows.append(annotate(row, reference, client))
+            except AnnotationRequestFailure as error:
+                failures.append({k: row[k] for k in ("VariationID", "role", "stratum")})
+                failures[-1]["error"] = str(error)
+                print(f"Annotation unavailable for {row['VariationID']}: {error}", flush=True)
     after = client.get("/info/data", tag="release_after")
     if before != after:
         raise ValueError("Ensembl release changed during pilot")
@@ -254,8 +276,12 @@ def run(config_path, fetch=False):
         verify(item)
     output = ROOT / config["output"]
     output.mkdir(parents=True, exist_ok=True)
-    audit = pd.DataFrame(audit_rows)
+    audit_columns = ["VariationID", "Name", "GeneSymbol", "role", "stratum", "selected_transcript",
+                     "mane_select", "selected_gene", "gene_matches", "transcript_count", "consequence_sets"] + FEATURE_COLUMNS
+    audit = pd.DataFrame(audit_rows, columns=audit_columns)
     audit.to_csv(output / "annotation_audit.tsv", sep="\t", index=False)
+    pd.DataFrame(failures, columns=["VariationID", "role", "stratum", "error"]).to_csv(
+        output / "annotation_failures.tsv", sep="\t", index=False)
     for role, name in (("train_feasibility", "train_candidate_features.tsv"),
                        ("seen_clingen_diagnostic", "seen_diagnostic_features.tsv")):
         audit.loc[audit.role.eq(role), ["VariationID"] + FEATURE_COLUMNS].to_csv(output / name, sep="\t", index=False)
@@ -276,9 +302,13 @@ def run(config_path, fetch=False):
                     policy=dict(labels_loaded=False, model_loaded=False, model_refit=False, predictions_recomputed=False,
                                 diagnostic_cases_previously_seen=True, gene_and_transcript_ids_are_audit_only=True),
                     transcript_selection="gene symbol match, MANE Select, canonical, lexicographic transcript ID",
-                    coverage=coverage, cache=client.used,
+                    attempted_counts=dict(pd.Series([r["role"] for r in rows]).value_counts().items()),
+                    failures=failures, coverage=coverage, cache=client.used,
                     outputs={p.name: sha256_file(p) for p in sorted(output.glob("*.tsv"))})
-    (output / "manifest.json").write_text(json.dumps(manifest, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    manifest_text = json.dumps(manifest, indent=2, ensure_ascii=False) + "\n"
+    (output / "manifest.json").write_text(manifest_text, encoding="utf-8")
+    # Keep the live acquisition record when an offline replay is performed.
+    (output / ("fetch_manifest.json" if fetch else "replay_manifest.json")).write_text(manifest_text, encoding="utf-8")
     print(json.dumps(coverage, indent=2), flush=True)
     return manifest
 

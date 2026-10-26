@@ -1,0 +1,50 @@
+{
+  "schema_version": 1,
+  "scope": "train_primary_biallelic_snv_only",
+  "chunk_size": 1000,
+  "release": 116,
+  "image": "ensemblorg/ensembl-vep@sha256:d4f7ab1dad8c350b3ffbda026c1a3086310a6311b53fb90842eaf71c23801def",
+  "platform": "linux/amd64",
+  "observed_image_tag": "release_116.1",
+  "working_reserve_bytes": 2147483648,
+  "disk_planning_policy": "8 GiB temporary budget for source/sort/index setup; 2 GiB working reserve afterwards",
+  "inputs": {
+    "variants": {
+      "path": "data/processed/clinvar_grch38_germline_exact_binary.tsv.gz",
+      "sha256": "4d018115be5a7ad710e86fb653630a87a2d9489ad29a59d8cc38b3d9d46341c1"
+    },
+    "split": {
+      "path": "data/processed/baseline_gene_disjoint_split.tsv",
+      "sha256": "7c115e25dd1c7edc1bc566ad12c14e829aa02252741dda8d080f4ac3cc796aa7"
+    },
+    "reference_config": {
+      "path": "data/reference/ucsc_hg38_initial/grch38_with_aliases.json",
+      "sha256": "c31c960acf7b4994bada0c8c72188c8d729dc690afa514aea933e05917f30f26"
+    }
+  },
+  "protected": [
+    {
+      "path": "artifacts/external_candidate/hgvs_missense_development_refit.joblib",
+      "sha256": "315b8a19986dcb0e20c010066c24f0baae62255d042828aefcc1fd78905139f7"
+    },
+    {
+      "path": "reports/generated/clingen_supplementary_evaluation/manifest.json",
+      "sha256": "d4c72dce69278d1343d74158ca8e8dfe08fc2b71f11e7b02ce824c60825feccd"
+    },
+    {
+      "path": "reports/generated/clingen_supplementary_evaluation/external_predictions.tsv.gz",
+      "sha256": "291c244b4a198e400ab87030a0e4bbb7381ea2cfd15c0a2ef5c1da619da6bafb"
+    }
+  ],
+  "prepared_dir": "data/processed/local_vep_train_snv",
+  "output_dir": "reports/generated/local_vep_gtf_batches",
+  "resource_lock": "reports/generated/local_vep_gtf_readiness/resources.lock.json",
+  "readiness_report": "reports/generated/local_vep_gtf_readiness/preflight.json",
+  "annotation_mode": "gtf",
+  "gtf_dir": "data/reference/ensembl_gtf_116",
+  "gtf_source": {
+    "url": "https://ftp.ensembl.org/pub/release-116/gtf/homo_sapiens/Homo_sapiens.GRCh38.116.gtf.gz",
+    "content_length_bytes": 141121632
+  },
+  "setup_planning_bytes": 8589934592
+}
