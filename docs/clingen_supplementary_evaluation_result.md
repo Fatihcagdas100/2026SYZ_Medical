@@ -2,6 +2,10 @@
 
 Tarih: 26 Ekim 2026
 
+Kaydedilmiş tahminlerin takip hata analizi:
+`docs/clingen_error_analysis_result.md`. Birincil ölçüm ve aşağıdaki sonuçlar
+takip analizinde değiştirilmedi.
+
 ## Birincil sonuç
 
 Dondurulmuş `hgvs_missense_development_refit` modeli, 264 varyantlık kabul edilmiş

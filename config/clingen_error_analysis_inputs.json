@@ -1,0 +1,23 @@
+{
+  "analysis_type": "post_evaluation_descriptive_error_analysis",
+  "evaluation_manifest": {
+    "path": "reports/generated/clingen_supplementary_evaluation/manifest.json",
+    "sha256": "d4c72dce69278d1343d74158ca8e8dfe08fc2b71f11e7b02ce824c60825feccd"
+  },
+  "predictions": {
+    "path": "reports/generated/clingen_supplementary_evaluation/external_predictions.tsv.gz",
+    "sha256": "291c244b4a198e400ab87030a0e4bbb7381ea2cfd15c0a2ef5c1da619da6bafb"
+  },
+  "curation_snapshot_manifest": {
+    "path": "data/external/clingen_erepo_2026-10-26/manifest.json",
+    "sha256": "6d328270433d4f949b4ced5d6e7033e308d11220e4c7b36ea37bebf724a5a5e2"
+  },
+  "min_class_count": 5,
+  "probability_regions": [0.2, 0.8],
+  "policy": {
+    "read_saved_predictions_only": true,
+    "model_loading_or_refitting": false,
+    "threshold_search": false,
+    "causal_interpretation": false
+  }
+}

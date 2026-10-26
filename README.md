@@ -659,6 +659,30 @@ olduğu dikkate alınmalıdır. Bütün genler eski veride görülmüştür; kay
 bağımsızlığı doğrulanmamıştır. Model veya eşik sonuçtan sonra değiştirilmedi.
 Ayrıntılı sonuç: `docs/clingen_supplementary_evaluation_result.md`.
 
+### ClinGen kayıtlı hatalarının açıklayıcı analizi
+
+Birincil tahminleri tekrar üretmeden hata dağılımını incelemek için:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\analyze_clingen_errors.py
+```
+
+Betik birincil sonuç ve tahmin hash'lerini doğrular; kayıtları özellik, gen,
+anotasyon kaynağı ve aynı tarihli uzman özetleriyle birleştirir. Eğitim desteği
+sadece train+validation özelliklerinden sayılır; test hedefleri okunmaz. Model
+yüklenmez, eşik taranmaz. Gen ve çift tabloları paydalarıyla raporlanır; küçük
+gruplar keşifsel olarak işaretlenir.
+
+80 FN'nin 72'si missense'dir. RYR1 ve TP53, toplam 26 FN içerir. 187 missense
+kaydının bütün aminoasit çiftleri eğitimde görülmüştür; bilinmeyen kategorik
+değer yoktur. Buna rağmen 5 gruptaki 12 varyant birebir aynı model girdileriyle
+farklı uzman etiketleri taşır. Bu, mevcut gösterimin bazı bağlamları ayıramadığını
+gösterir; tek başına bütün hata nedenini açıklamaz.
+
+Sonuç özeti: `docs/clingen_error_analysis_result.md`. Ayrıntılı yerel çıktılar
+`reports/generated/clingen_error_analysis/` altındadır. Model ve eşik korunur;
+bu görülmüş kohort yeni modeller için bağımsız doğrulama olarak kullanılamaz.
+
 ### OOF olasılık kalibrasyonu
 
 Gene-disjoint çapraz doğrulamadaki olasılıkların güvenilirliğini incelemek için:
